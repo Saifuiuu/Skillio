@@ -61,6 +61,15 @@ def create_refresh_token(user_id: uuid.UUID) -> str:
         expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
 
+
+def create_password_reset_token(user_id: uuid.UUID) -> str:
+    return _create_token(
+        subject=str(user_id),
+        token_type="password_reset",
+        expires_delta=timedelta(minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES),
+    )
+
+
 #Theis function verify jwt token and handle any exception and in last return the payload 
 def decode_token(token: str, expected_type: str) -> dict:
     try:
@@ -68,7 +77,8 @@ def decode_token(token: str, expected_type: str) -> dict:
             token,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],  # list dena lazmi hai, neeche dekhein
-        )
+            options={"require": ["exp", "sub", "type"]},
+            )
     except jwt.ExpiredSignatureError:
         raise TokenError("Token expired")
     except jwt.InvalidTokenError:
