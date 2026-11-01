@@ -1,9 +1,10 @@
+import logging
 import secrets
 import uuid
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -12,7 +13,11 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.email import send_email
+from app.core.email import (
+    build_google_only_reset_email,
+    build_password_reset_email,
+    send_email,
+)
 from app.core.security import (
     TokenError,
     create_access_token,
@@ -20,6 +25,7 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     hash_password,
+    token_version_ok,
     verify_password,
 )
 from app.Dtos.auth import (
@@ -30,6 +36,8 @@ from app.Dtos.auth import (
 )
 from app.Dtos.user import UserOut
 from app.models.user import Role, User, UserStatus
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -71,9 +79,20 @@ def _clear_auth_cookies(response: Response) -> None:
 def _issue_session(response: Response, user: User) -> None:
     _set_auth_cookies(
         response,
-        access_token=create_access_token(user.id, user.role.value),
-        refresh_token=create_refresh_token(user.id),
+        access_token=create_access_token(
+            user.id, user.role.value, token_version=user.token_version
+        ),
+        refresh_token=create_refresh_token(user.id, token_version=user.token_version),
     )
+
+
+def _safe_send_email(
+    *, to: str, subject: str, body: str, html: str | None = None
+) -> None:
+    try:
+        send_email(to=to, subject=subject, body=body, html=html)
+    except Exception:
+        logger.exception("Failed to send email to %s", to)
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -145,6 +164,8 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
     user = db.get(User, uuid.UUID(payload["sub"]))
     if user is None or user.status == UserStatus.suspended:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not available")
+    if not token_version_ok(payload, user.token_version):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
 
     _issue_session(response, user)
 
@@ -160,35 +181,39 @@ def me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
-def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    # Always 204 — do not reveal whether the email exists.
+def forgot_password(
+    data: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    # Always 204 — do not reveal whether the email exists (timing via BackgroundTasks).
     user = db.scalar(select(User).where(User.email == data.email))
     if user is None or user.status == UserStatus.suspended:
         return
 
     if user.password_hash is None and user.auth_provider == "google":
-        send_email(
+        subject, text, html = build_google_only_reset_email()
+        background_tasks.add_task(
+            _safe_send_email,
             to=user.email,
-            subject="Skillio password reset",
-            body=(
-                "You requested a password reset, but this Skillio account signs in with Google.\n"
-                "Use “Sign in with Google” on the login page instead.\n"
-            ),
+            subject=subject,
+            body=text,
+            html=html,
         )
         return
 
-    token = create_password_reset_token(user.id)
+    token = create_password_reset_token(user.id, token_version=user.token_version)
     reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={token}"
-    send_email(
+    subject, text, html = build_password_reset_email(
+        reset_url=reset_url,
+        expire_minutes=settings.PASSWORD_RESET_EXPIRE_MINUTES,
+    )
+    background_tasks.add_task(
+        _safe_send_email,
         to=user.email,
-        subject="Reset your Skillio password",
-        body=(
-            "We received a request to reset your Skillio password.\n\n"
-            f"Open this link to choose a new password (expires in "
-            f"{settings.PASSWORD_RESET_EXPIRE_MINUTES} minutes):\n\n"
-            f"{reset_url}\n\n"
-            "If you did not request this, you can ignore this email.\n"
-        ),
+        subject=subject,
+        body=text,
+        html=html,
     )
 
 
@@ -202,8 +227,11 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     user = db.get(User, uuid.UUID(payload["sub"]))
     if user is None or user.status == UserStatus.suspended:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset link")
+    if not token_version_ok(payload, user.token_version):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired reset link")
 
     user.password_hash = hash_password(data.password)
+    user.token_version = user.token_version + 1
     if user.auth_provider == "google":
         user.auth_provider = "local"
     db.commit()
@@ -257,7 +285,13 @@ def google_callback(
         return RedirectResponse(url=f"{frontend}/login?error=google_denied", status_code=302)
 
     cookie_state = request.cookies.get(OAUTH_STATE_COOKIE)
-    if not code or not state or not cookie_state or state != cookie_state:
+    if (
+        not code
+        or not state
+        or not cookie_state
+        or len(state) != len(cookie_state)
+        or not secrets.compare_digest(state, cookie_state)
+    ):
         return RedirectResponse(url=f"{frontend}/login?error=google_state", status_code=302)
 
     try:
@@ -318,9 +352,17 @@ def google_callback(
             return RedirectResponse(
                 url=f"{frontend}/login?error=account_suspended", status_code=302
             )
-        user.is_email_verified = True
-        if user.auth_provider == "local" and user.password_hash is None:
+        # Unverified password account + Google link: invalidate password & sessions
+        # so an attacker who registered first cannot keep the old password.
+        if not user.is_email_verified and user.password_hash is not None:
+            user.password_hash = None
+            user.token_version = user.token_version + 1
             user.auth_provider = "google"
+            user.is_email_verified = True
+        else:
+            user.is_email_verified = True
+            if user.auth_provider == "local" and user.password_hash is None:
+                user.auth_provider = "google"
         db.commit()
         db.refresh(user)
 

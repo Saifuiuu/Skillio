@@ -1,5 +1,13 @@
-.env
-__pycache__/
-*.pyc
-node_modules/
-.next/
+  .env
+  .env.local
+  *.env
+  !.env.example
+  .venv/
+  __pycache__/
+  node_modules/
+  .next/
+pytest_*.txt
+
+pytest_*.txt
+
+pytest_*.txt

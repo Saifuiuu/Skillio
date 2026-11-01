@@ -9,6 +9,8 @@ _ENV_FILE = _BACKEND_ROOT / ".env"
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+    # Separate DB for pytest — never point this at the same DB as DATABASE_URL.
+    TEST_DATABASE_URL: str = ""
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
 
-    PASSWORD_RESET_EXPIRE_MINUTES: int = 30
+    PASSWORD_RESET_EXPIRE_MINUTES: int = 15
 
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
@@ -38,10 +40,26 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @staticmethod
+    def _with_psycopg(url: str) -> str:
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+
     @property
     def sqlalchemy_url(self) -> str:
         # Neon "postgresql://" deta hai, SQLAlchemy ko driver ka naam chahiye
-        return self.DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+        return self._with_psycopg(self.DATABASE_URL)
+
+    @property
+    def test_sqlalchemy_url(self) -> str:
+        if not self.TEST_DATABASE_URL:
+            raise RuntimeError(
+                "TEST_DATABASE_URL is not set. Tests refuse to use the dev database."
+            )
+        if self.TEST_DATABASE_URL.strip() == self.DATABASE_URL.strip():
+            raise RuntimeError(
+                "TEST_DATABASE_URL must differ from DATABASE_URL (isolation required)."
+            )
+        return self._with_psycopg(self.TEST_DATABASE_URL)
 
     @property
     def google_oauth_configured(self) -> bool:

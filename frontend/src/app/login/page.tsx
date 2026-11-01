@@ -20,11 +20,14 @@ const GOOGLE_ERRORS: Record<string, string> = {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const loggedOut = Boolean(searchParams.get("loggedOut"));
+
+  // Remount a fresh empty form after logout (avoids setState-in-effect lint + autofill).
+  const [formKey] = useState(() => (loggedOut ? Date.now() : 0));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [formKey, setFormKey] = useState(0);
   const [allowAutofill, setAllowAutofill] = useState(false);
 
   const oauthError = useMemo(() => {
@@ -32,16 +35,9 @@ function LoginForm() {
     return key ? GOOGLE_ERRORS[key] ?? "Google sign-in failed." : null;
   }, [searchParams]);
 
-  const loggedOut = searchParams.get("loggedOut");
-
-  // After logout, wipe fields and remount inputs so the browser does not leave
-  // the previous email/password visible.
+  // Strip ?loggedOut=1 without touching form state (form already mounted empty).
   useEffect(() => {
     if (!loggedOut) return;
-    setEmail("");
-    setPassword("");
-    setAllowAutofill(false);
-    setFormKey((k) => k + 1);
     router.replace("/login", { scroll: false });
   }, [loggedOut, router]);
 

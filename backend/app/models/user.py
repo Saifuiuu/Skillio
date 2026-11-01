@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, String, func
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -41,7 +41,12 @@ class User(Base):
     auth_provider: Mapped[str] = mapped_column(String(20), default="local")
 
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
+    # Bumped on password reset / forced re-auth so old JWTs stop working.
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0", default=0
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

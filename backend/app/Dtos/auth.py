@@ -22,7 +22,7 @@ def _validate_password(v: str) -> str:
 
 
 class RegisterRequest(_EmailModel):
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=8, max_length=72)
     role: Literal["candidate", "employer", "interviewer"]
 
     @field_validator("password")
@@ -41,7 +41,8 @@ class ForgotPasswordRequest(_EmailModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=10)
-    password: str = Field(min_length=8, max_length=128)
+    # min 8 characters; max 72 chars + byte check for bcrypt's 72-byte limit
+    password: str = Field(min_length=8, max_length=72)
 
     @field_validator("password")
     @classmethod
