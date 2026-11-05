@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
 
     PASSWORD_RESET_EXPIRE_MINUTES: int = 15
+    EMAIL_VERIFICATION_EXPIRE_HOURS: int = 24
 
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

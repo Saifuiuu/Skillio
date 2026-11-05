@@ -284,7 +284,7 @@ def test_admin_ping_allowed_role_200(client, db_session):
         role=Role.admin,
         status=UserStatus.active,
         auth_provider="local",
-        is_email_verified=True,
+        email_verified=True,
     )
     db_session.add(user)
     db_session.commit()

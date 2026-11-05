@@ -39,6 +39,14 @@ class ForgotPasswordRequest(_EmailModel):
     pass
 
 
+class ResendVerificationRequest(_EmailModel):
+    pass
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=10)
+
+
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=10)
     # min 8 characters; max 72 chars + byte check for bcrypt's 72-byte limit

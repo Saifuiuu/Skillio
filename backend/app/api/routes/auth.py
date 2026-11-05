@@ -22,6 +22,7 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.email import (
+    build_email_verification_email,
     build_google_only_reset_email,
     build_password_reset_email,
     send_email,
@@ -29,6 +30,7 @@ from app.core.email import (
 from app.core.security import (
     TokenError,
     create_access_token,
+    create_email_verification_token,
     create_password_reset_token,
     create_refresh_token,
     decode_token,
@@ -40,7 +42,9 @@ from app.Dtos.auth import (
     ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
+    ResendVerificationRequest,
     ResetPasswordRequest,
+    VerifyEmailRequest,
 )
 from app.Dtos.user import UserOut
 from app.models.user import Role, User, UserStatus
@@ -103,8 +107,28 @@ def _safe_send_email(
         logger.exception("Failed to send email to %s", to)
 
 
+def _queue_verification_email(background_tasks: BackgroundTasks, user: User) -> None:
+    token = create_email_verification_token(user.id, user.email)
+    verify_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
+    subject, text, html = build_email_verification_email(
+        verify_url=verify_url,
+        expire_hours=settings.EMAIL_VERIFICATION_EXPIRE_HOURS,
+    )
+    background_tasks.add_task(
+        _safe_send_email,
+        to=user.email,
+        subject=subject,
+        body=text,
+        html=html,
+    )
+
+
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register(data: RegisterRequest, db: Session = Depends(get_db)):
+def register(
+    data: RegisterRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     existing = db.scalar(select(User).where(User.email == data.email))
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
@@ -120,6 +144,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         role=role,
         status=user_status,
         auth_provider="local",
+        email_verified=False,
     )
     db.add(user)
     try:
@@ -128,7 +153,52 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
     db.refresh(user)
+    _queue_verification_email(background_tasks, user)
     return user
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
+    try:
+        payload = decode_token(data.token, expected_type="verify_email")
+    except TokenError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+
+    try:
+        user_id = uuid.UUID(payload["sub"])
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Invalid or expired verification link"
+        )
+
+    user = db.get(User, user_id)
+    token_email = payload.get("email")
+    if (
+        user is None
+        or user.status == UserStatus.suspended
+        or not isinstance(token_email, str)
+        or token_email != user.email
+    ):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Invalid or expired verification link"
+        )
+
+    if not user.email_verified:
+        user.email_verified = True
+        db.commit()
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+def resend_verification(
+    data: ResendVerificationRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    # Always 204 — do not reveal whether the email exists.
+    user = db.scalar(select(User).where(User.email == data.email))
+    if user is None or user.status == UserStatus.suspended or user.email_verified:
+        return
+    _queue_verification_email(background_tasks, user)
 
 
 @router.post("/login", status_code=status.HTTP_204_NO_CONTENT)
@@ -342,7 +412,7 @@ def google_callback(
             role=Role.candidate,
             status=UserStatus.active,
             auth_provider="google",
-            is_email_verified=True,
+            email_verified=True,
         )
         db.add(user)
         try:
@@ -363,13 +433,13 @@ def google_callback(
             )
         # Unverified password account + Google link: invalidate password & sessions
         # so an attacker who registered first cannot keep the old password.
-        if not user.is_email_verified and user.password_hash is not None:
+        if not user.email_verified and user.password_hash is not None:
             user.password_hash = None
             user.token_version = user.token_version + 1
             user.auth_provider = "google"
-            user.is_email_verified = True
+            user.email_verified = True
         else:
-            user.is_email_verified = True
+            user.email_verified = True
             if user.auth_provider == "local" and user.password_hash is None:
                 user.auth_provider = "google"
         db.commit()
