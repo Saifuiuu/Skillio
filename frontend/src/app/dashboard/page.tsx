@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
-import { fetchMe, logout as apiLogout, type Role, type User } from "@/lib/api";
+import {
+  fetchMe,
+  logout as apiLogout,
+  resendVerification,
+  type Role,
+  type User,
+} from "@/lib/api";
 
 const WELCOME: Record<Role, string> = {
   candidate:
@@ -18,6 +24,8 @@ const WELCOME: Record<Role, string> = {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMe()
@@ -33,6 +41,20 @@ export default function DashboardPage() {
     }
   }
 
+  async function onResendVerification() {
+    if (!user) return;
+    setResendMsg(null);
+    setResendLoading(true);
+    try {
+      await resendVerification(user.email);
+    } catch {
+      // Always show the same generic message.
+    } finally {
+      setResendMsg("If that email needs verification, a new link has been sent.");
+      setResendLoading(false);
+    }
+  }
+
   if (!user) {
     return <DashboardSkeleton />;
   }
@@ -40,6 +62,23 @@ export default function DashboardPage() {
   return (
     <DashboardShell email={user.email} role={user.role} onLogout={logout}>
       <h2 className="text-2xl font-semibold text-slate-900">Welcome to Skillio</h2>
+
+      {!user.email_verified && (
+        <div className="mt-4 rounded-md border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>Please verify your email</p>
+            <button
+              type="button"
+              disabled={resendLoading}
+              onClick={onResendVerification}
+              className="shrink-0 rounded-md bg-[#1E3A5F] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#16304f] disabled:opacity-60"
+            >
+              {resendLoading ? "Sending..." : "Resend verification email"}
+            </button>
+          </div>
+          {resendMsg && <p className="mt-2 text-sky-900">{resendMsg}</p>}
+        </div>
+      )}
 
       {user.status === "pending_verification" && (
         <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">

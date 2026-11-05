@@ -8,7 +8,7 @@ export type User = {
   email: string;
   role: Role;
   status: UserStatus;
-  is_email_verified: boolean;
+  email_verified: boolean;
   created_at: string;
 };
 
@@ -111,6 +111,20 @@ export async function resetPassword(token: string, password: string) {
   await request<void>("/auth/reset-password", {
     method: "POST",
     body: JSON.stringify({ token, password }),
+  });
+}
+
+export async function verifyEmail(token: string) {
+  await request<void>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function resendVerification(email: string) {
+  await request<void>("/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email }),
   });
 }
 
