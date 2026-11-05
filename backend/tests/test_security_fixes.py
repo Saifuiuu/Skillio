@@ -112,7 +112,12 @@ def test_google_link_invalidates_password_on_unverified_account(client, db_sessi
 
     mock_info = MagicMock()
     mock_info.raise_for_status = MagicMock()
-    mock_info.json.return_value = {"email": email, "email_verified": True}
+    mock_info.json.return_value = {
+        "sub": "google-sub-link-1",
+        "email": email,
+        "email_verified": True,
+        "name": "Link User",
+    }
 
     mock_client = MagicMock()
     mock_client.__enter__.return_value = mock_client

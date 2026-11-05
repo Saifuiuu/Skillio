@@ -79,6 +79,25 @@ def create_email_verification_token(user_id: uuid.UUID, email: str) -> str:
     )
 
 
+def create_google_signup_token(
+    *,
+    google_sub: str,
+    email: str,
+    name: str,
+    email_verified: bool,
+) -> str:
+    return _create_token(
+        subject=google_sub,
+        token_type="google_signup",
+        expires_delta=timedelta(minutes=settings.GOOGLE_SIGNUP_EXPIRE_MINUTES),
+        extra_claims={
+            "email": email,
+            "name": name,
+            "email_verified": email_verified,
+        },
+    )
+
+
 def decode_token(token: str, expected_type: str) -> dict:
     try:
         payload = jwt.decode(

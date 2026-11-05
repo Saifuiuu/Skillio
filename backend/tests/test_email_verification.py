@@ -126,7 +126,12 @@ def test_google_user_email_verified_true(client, db_session):
 
     mock_info = MagicMock()
     mock_info.raise_for_status = MagicMock()
-    mock_info.json.return_value = {"email": email, "email_verified": True}
+    mock_info.json.return_value = {
+        "sub": "google-sub-verify-1",
+        "email": email,
+        "email_verified": True,
+        "name": "Verify User",
+    }
 
     mock_client = MagicMock()
     mock_client.__enter__.return_value = mock_client
@@ -142,6 +147,14 @@ def test_google_user_email_verified_true(client, db_session):
         )
 
     assert resp.status_code in (302, 307)
+    assert "/select-role" in resp.headers.get("location", "")
+    assert resp.cookies.get("google_signup")
+    assert db_session.scalar(select(User).where(User.email == email)) is None
+
+    client.cookies.set("google_signup", resp.cookies.get("google_signup"))
+    complete = client.post("/auth/google/complete", json={"role": "candidate"})
+    assert complete.status_code == 201
+    assert complete.json()["email_verified"] is True
     user = db_session.scalar(select(User).where(User.email == email))
     assert user is not None
     assert user.email_verified is True

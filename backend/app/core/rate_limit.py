@@ -72,3 +72,7 @@ def resend_verification_limit() -> str:
 
 def reset_password_limit() -> str:
     return f"{settings.RATE_LIMIT_RESET_PASSWORD_PER_MINUTE}/minute"
+
+
+def google_complete_limit() -> str:
+    return f"{settings.RATE_LIMIT_GOOGLE_COMPLETE_PER_MINUTE}/minute"

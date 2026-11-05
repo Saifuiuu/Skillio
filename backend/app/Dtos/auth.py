@@ -58,6 +58,10 @@ class ResetPasswordRequest(BaseModel):
         return _validate_password(v)
 
 
+class GoogleCompleteRequest(BaseModel):
+    role: Literal["candidate", "employer", "interviewer"]
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 
