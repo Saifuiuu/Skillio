@@ -1,12 +1,16 @@
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.routes import admin, auth
 from app.core.database import get_db
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 
 app = FastAPI(title="Skillio API", version="0.1.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
