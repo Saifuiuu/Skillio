@@ -11,13 +11,14 @@ export type NavItem = {
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   candidate: [
     { href: "/dashboard", label: "Dashboard", enabled: true },
-    { href: "/jobs", label: "Jobs", enabled: false },
+    { href: "/jobs", label: "Browse jobs", enabled: true },
     { href: "/applications", label: "Applications", enabled: false },
     { href: "/profile", label: "Profile", enabled: false },
   ],
   employer: [
     { href: "/dashboard", label: "Dashboard", enabled: true },
-    { href: "/jobs", label: "Job posts", enabled: false },
+    { href: "/employer/jobs", label: "My Jobs", enabled: true },
+    { href: "/jobs", label: "Browse jobs", enabled: true },
     { href: "/candidates", label: "Candidates", enabled: false },
     { href: "/company", label: "Company", enabled: false },
   ],

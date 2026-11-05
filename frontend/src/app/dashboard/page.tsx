@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
@@ -88,6 +89,23 @@ export default function DashboardPage() {
       )}
 
       <p className="mt-4 max-w-xl text-slate-700">{WELCOME[user.role]}</p>
+
+      <p className="mt-6">
+        <Link href="/jobs" className="text-sm font-medium text-[#1E3A5F] underline">
+          Browse jobs
+        </Link>
+        {user.role === "employer" && (
+          <>
+            {" · "}
+            <Link
+              href="/employer/jobs"
+              className="text-sm font-medium text-[#1E3A5F] underline"
+            >
+              My Jobs
+            </Link>
+          </>
+        )}
+      </p>
     </DashboardShell>
   );
 }
