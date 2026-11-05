@@ -218,7 +218,23 @@ export function fetchMe() {
   return authed<User>("/auth/me");
 }
 
-function toQuery(params: JobListParams): string {
+export type PaginatedUsers = {
+  items: User[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+export type AdminUserListParams = {
+  page?: number;
+  page_size?: number;
+  role?: Role;
+  status?: UserStatus;
+};
+
+function toQuery(
+  params: Record<string, string | number | boolean | undefined | null>
+): string {
   const sp = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
@@ -229,7 +245,9 @@ function toQuery(params: JobListParams): string {
 }
 
 export function listJobs(params: JobListParams = {}) {
-  return request<PaginatedJobs>(`/jobs${toQuery(params)}`);
+  return request<PaginatedJobs>(
+    `/jobs${toQuery(params as Record<string, string | number | undefined | null>)}`
+  );
 }
 
 export function getJob(id: string) {
@@ -237,7 +255,9 @@ export function getJob(id: string) {
 }
 
 export function listMyJobs(page = 1, pageSize = 20) {
-  return authed<PaginatedJobs>(`/jobs/mine${toQuery({ page, page_size: pageSize })}`);
+  return authed<PaginatedJobs>(
+    `/jobs/mine${toQuery({ page, page_size: pageSize })}`
+  );
 }
 
 export function createJob(payload: JobWritePayload) {
@@ -256,4 +276,18 @@ export function updateJob(id: string, payload: Partial<JobWritePayload>) {
 
 export function closeJob(id: string) {
   return authed<Job>(`/jobs/${id}/close`, { method: "POST" });
+}
+
+export function listAdminUsers(params: AdminUserListParams = {}) {
+  return authed<PaginatedUsers>(`/admin/users${toQuery(params)}`);
+}
+
+export function updateUserStatus(
+  userId: string,
+  status: Extract<UserStatus, "active" | "suspended">
+) {
+  return authed<User>(`/admin/users/${userId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
