@@ -26,6 +26,18 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
+def get_current_user_optional(
+    request: Request, db: Session = Depends(get_db)
+) -> User | None:
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        return get_current_user(request, db)
+    except HTTPException:
+        return None
+
+
 def require_role(*roles: str) -> Callable[..., User]:
     """Reusable RBAC dependency. Example: Depends(require_role("admin"))."""
 
@@ -37,3 +49,22 @@ def require_role(*roles: str) -> Callable[..., User]:
         return current_user
 
     return _dependency
+
+
+require_employer = require_role("employer")
+
+
+def require_active_verified_employer(
+    current_user: User = Depends(require_employer),
+) -> User:
+    if not current_user.email_verified:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Email must be verified before posting jobs",
+        )
+    if current_user.status != UserStatus.active:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Employer account must be approved before posting jobs",
+        )
+    return current_user
