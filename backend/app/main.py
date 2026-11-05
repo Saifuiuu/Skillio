@@ -1,9 +1,9 @@
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.api.routes import admin, auth
-from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes import admin, auth
 from app.core.database import get_db
 
 app = FastAPI(title="Skillio API", version="0.1.0")

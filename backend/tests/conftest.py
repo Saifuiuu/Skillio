@@ -5,11 +5,10 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
+import app.models  # noqa: F401
 from app.core.config import settings
 from app.core.database import Base, get_db
 from app.main import app as fastapi_app
-
-import app.models  # noqa: F401
 
 
 def _assert_test_db_isolated() -> None:

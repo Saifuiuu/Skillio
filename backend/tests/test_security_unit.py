@@ -1,7 +1,7 @@
 """Unit tests for app.core.security."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
@@ -25,7 +25,7 @@ def test_hash_and_verify_password():
 
 
 def test_decode_token_rejects_missing_exp():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token = jwt.encode(
         {
             "sub": str(uuid.uuid4()),
@@ -41,7 +41,7 @@ def test_decode_token_rejects_missing_exp():
 
 
 def test_decode_token_rejects_missing_sub():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token = jwt.encode(
         {
             "type": "access",
@@ -56,7 +56,7 @@ def test_decode_token_rejects_missing_sub():
 
 
 def test_decode_token_rejects_missing_type():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token = jwt.encode(
         {
             "sub": str(uuid.uuid4()),
@@ -77,7 +77,7 @@ def test_decode_token_rejects_wrong_type():
 
 
 def test_decode_token_rejects_expired():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token = jwt.encode(
         {
             "sub": str(uuid.uuid4()),

@@ -4,7 +4,15 @@ import uuid
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -318,7 +326,8 @@ def google_callback(
             )
             info_res.raise_for_status()
             info = info_res.json()
-    except Exception:
+    
+    except (httpx.HTTPError, ValueError):
         return RedirectResponse(url=f"{frontend}/login?error=google_exchange", status_code=302)
 
     email = (info.get("email") or "").strip().lower()

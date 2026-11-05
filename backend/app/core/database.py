@@ -1,7 +1,9 @@
 #this will stablish connection with db
 from sqlalchemy import create_engine
+
 #the declarativeBase provide base class for table creation and sessionmaker this handle seesion and generate transection
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
 #the setting class we make for serilization and url modification                    
 from app.core.config import settings
 

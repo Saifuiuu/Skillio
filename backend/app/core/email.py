@@ -79,7 +79,7 @@ def build_google_only_reset_email() -> tuple[str, str, str]:
         "You requested a password reset, but this Skillio account signs in with Google.\n"
         "Use “Sign in with Google” on the login page instead.\n"
     )
-    html = f"""\
+    html = """\
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#FAFAF9;">

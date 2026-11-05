@@ -4,7 +4,11 @@ from unittest.mock import MagicMock, patch
 
 from sqlalchemy import select
 
-from app.core.security import create_password_reset_token, create_refresh_token, hash_password
+from app.core.security import (
+    create_password_reset_token,
+    create_refresh_token,
+    hash_password,
+)
 from app.models.user import Role, User, UserStatus
 
 

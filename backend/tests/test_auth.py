@@ -1,6 +1,6 @@
 """Auth endpoint coverage: register, login, me, refresh, logout, require_role."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from sqlalchemy import select
@@ -193,7 +193,7 @@ def test_me_expired_access_token_401(client, db_session):
     user = db_session.scalar(select(User).where(User.email == email))
     assert user is not None
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(user.id),
         "type": "access",

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
+
 # here we define the possible roles in our app for data integrity 
 class Role(str, enum.Enum):
     candidate = "candidate"
