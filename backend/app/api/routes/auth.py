@@ -29,6 +29,7 @@ from app.core.email import (
 )
 from app.core.rate_limit import (
     forgot_password_limit,
+    google_complete_limit,
     limiter,
     login_limit,
     register_limit,
@@ -39,6 +40,7 @@ from app.core.security import (
     TokenError,
     create_access_token,
     create_email_verification_token,
+    create_google_signup_token,
     create_password_reset_token,
     create_refresh_token,
     decode_token,
@@ -48,6 +50,7 @@ from app.core.security import (
 )
 from app.Dtos.auth import (
     ForgotPasswordRequest,
+    GoogleCompleteRequest,
     LoginRequest,
     RegisterRequest,
     ResendVerificationRequest,
@@ -65,6 +68,8 @@ COOKIE_SECURE = settings.COOKIE_SECURE
 ACCESS_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 REFRESH_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
 OAUTH_STATE_COOKIE = "oauth_state"
+GOOGLE_SIGNUP_COOKIE = "google_signup"
+GOOGLE_SIGNUP_MAX_AGE = settings.GOOGLE_SIGNUP_EXPIRE_MINUTES * 60
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
@@ -427,46 +432,131 @@ def google_callback(
 
     user = db.scalar(select(User).where(User.email == email))
     if user is None:
-        user = User(
+        google_sub = str(info.get("sub") or "").strip()
+        if not google_sub:
+            return RedirectResponse(
+                url=f"{frontend}/login?error=google_email", status_code=302
+            )
+        signup_token = create_google_signup_token(
+            google_sub=google_sub,
             email=email,
-            password_hash=None,
-            role=Role.candidate,
-            status=UserStatus.active,
-            auth_provider="google",
+            name=(info.get("name") or "").strip(),
             email_verified=True,
         )
-        db.add(user)
-        try:
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-            user = db.scalar(select(User).where(User.email == email))
-            if user is None:
-                return RedirectResponse(
-                    url=f"{frontend}/login?error=google_create", status_code=302
-                )
-        else:
-            db.refresh(user)
+        response = RedirectResponse(
+            url=f"{frontend}/select-role", status_code=302
+        )
+        response.set_cookie(
+            key=GOOGLE_SIGNUP_COOKIE,
+            value=signup_token,
+            max_age=GOOGLE_SIGNUP_MAX_AGE,
+            httponly=True,
+            secure=COOKIE_SECURE,
+            samesite="lax",
+            path="/",
+        )
+        response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
+        return response
+
+    if user.status == UserStatus.suspended:
+        return RedirectResponse(
+            url=f"{frontend}/login?error=account_suspended", status_code=302
+        )
+    # Unverified password account + Google link: invalidate password & sessions
+    # so an attacker who registered first cannot keep the old password.
+    if not user.email_verified and user.password_hash is not None:
+        user.password_hash = None
+        user.token_version = user.token_version + 1
+        user.auth_provider = "google"
+        user.email_verified = True
     else:
-        if user.status == UserStatus.suspended:
-            return RedirectResponse(
-                url=f"{frontend}/login?error=account_suspended", status_code=302
-            )
-        # Unverified password account + Google link: invalidate password & sessions
-        # so an attacker who registered first cannot keep the old password.
-        if not user.email_verified and user.password_hash is not None:
-            user.password_hash = None
-            user.token_version = user.token_version + 1
+        user.email_verified = True
+        if user.auth_provider == "local" and user.password_hash is None:
             user.auth_provider = "google"
-            user.email_verified = True
-        else:
-            user.email_verified = True
-            if user.auth_provider == "local" and user.password_hash is None:
-                user.auth_provider = "google"
-        db.commit()
-        db.refresh(user)
+    db.commit()
+    db.refresh(user)
 
     response = RedirectResponse(url=f"{frontend}/dashboard", status_code=302)
     _issue_session(response, user)
     response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
     return response
+
+
+@router.post(
+    "/google/complete",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit(google_complete_limit)
+def google_complete(
+    request: Request,
+    response: Response,
+    data: GoogleCompleteRequest,
+    db: Session = Depends(get_db),
+):
+    raw = request.cookies.get(GOOGLE_SIGNUP_COOKIE)
+    if not raw:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid or expired Google sign-up session",
+        )
+
+    try:
+        payload = decode_token(raw, expected_type="google_signup")
+    except TokenError:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid or expired Google sign-up session",
+        )
+
+    email = payload.get("email")
+    google_sub = payload.get("sub")
+    if (
+        not isinstance(email, str)
+        or not email
+        or not isinstance(google_sub, str)
+        or not google_sub
+        or not payload.get("email_verified")
+    ):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid or expired Google sign-up session",
+        )
+
+    normalized = email.strip().lower()
+    existing = db.scalar(select(User).where(User.email == normalized))
+    if existing is not None:
+        response.delete_cookie(GOOGLE_SIGNUP_COOKIE, path="/")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Unable to complete Google sign-up",
+        )
+
+    role = Role(data.role)
+    user_status = (
+        UserStatus.active if role == Role.candidate else UserStatus.pending_verification
+    )
+    user = User(
+        email=normalized,
+        password_hash=None,
+        role=role,
+        status=user_status,
+        auth_provider="google",
+        email_verified=True,
+    )
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        response.delete_cookie(GOOGLE_SIGNUP_COOKIE, path="/")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Unable to complete Google sign-up",
+        )
+    db.refresh(user)
+
+    response.delete_cookie(GOOGLE_SIGNUP_COOKIE, path="/")
+    # Mirror login: session is issued for active and pending_verification (not suspended).
+    _issue_session(response, user)
+    return user

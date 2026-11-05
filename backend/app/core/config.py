@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/auth/google/callback"
+    # Short-lived cookie JWT for new Google users choosing a role.
+    GOOGLE_SIGNUP_EXPIRE_MINUTES: int = 10
 
     PASSWORD_RESET_EXPIRE_MINUTES: int = 15
     EMAIL_VERIFICATION_EXPIRE_HOURS: int = 24
@@ -47,6 +49,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_FORGOT_PASSWORD_PER_MINUTE: int = 3
     RATE_LIMIT_RESEND_VERIFICATION_PER_MINUTE: int = 3
     RATE_LIMIT_RESET_PASSWORD_PER_MINUTE: int = 5
+    RATE_LIMIT_GOOGLE_COMPLETE_PER_MINUTE: int = 5
 
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
