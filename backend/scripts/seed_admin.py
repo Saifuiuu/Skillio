@@ -33,7 +33,7 @@ def seed_admin_user(db: Session, email: str, password: str) -> tuple[User, bool]
             role=Role.admin,
             status=UserStatus.active,
             auth_provider="local",
-            is_email_verified=True,
+            email_verified=True,
         )
         db.add(user)
         db.commit()

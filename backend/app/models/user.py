@@ -41,7 +41,7 @@ class User(Base):
 
     auth_provider: Mapped[str] = mapped_column(String(20), default="local")
 
-    is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Bumped on password reset / forced re-auth so old JWTs stop working.
     token_version: Mapped[int] = mapped_column(

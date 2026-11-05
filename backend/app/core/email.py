@@ -73,6 +73,52 @@ def build_password_reset_email(*, reset_url: str, expire_minutes: int) -> tuple[
     return subject, text, html
 
 
+def build_email_verification_email(
+    *, verify_url: str, expire_hours: int
+) -> tuple[str, str, str]:
+    subject = "Verify your Skillio email"
+    text = (
+        "Welcome to Skillio.\n\n"
+        f"Open this link to verify your email (expires in {expire_hours} hours):\n\n"
+        f"{verify_url}\n\n"
+        "If you did not create an account, you can ignore this email.\n"
+    )
+    button = _bulletproof_button(href=verify_url, label="Verify email")
+    html = f"""\
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#FAFAF9;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#FAFAF9;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+               style="max-width:520px;background:#ffffff;border:1px solid #e2e8f0;padding:32px;
+                      font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+          <tr><td style="font-size:22px;font-weight:bold;color:#1E3A5F;">Skillio</td></tr>
+          <tr><td style="padding-top:20px;font-size:16px;line-height:1.5;">
+            Welcome to Skillio. Please verify your email address.
+          </td></tr>
+          <tr><td style="padding-top:8px;font-size:14px;line-height:1.5;color:#475569;">
+            This link expires in {expire_hours} hours.
+          </td></tr>
+          <tr><td>{button}</td></tr>
+          <tr><td style="font-size:12px;line-height:1.5;color:#64748b;word-break:break-all;">
+            If the button does not work, copy and paste this URL into your browser:<br/>
+            {escape(verify_url)}
+          </td></tr>
+          <tr><td style="padding-top:24px;font-size:12px;color:#64748b;">
+            If you did not create an account, you can ignore this email.
+          </td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+    return subject, text, html
+
+
 def build_google_only_reset_email() -> tuple[str, str, str]:
     subject = "Skillio password reset"
     text = (

@@ -70,6 +70,15 @@ def create_password_reset_token(user_id: uuid.UUID, token_version: int = 0) -> s
     )
 
 
+def create_email_verification_token(user_id: uuid.UUID, email: str) -> str:
+    return _create_token(
+        subject=str(user_id),
+        token_type="verify_email",
+        expires_delta=timedelta(hours=settings.EMAIL_VERIFICATION_EXPIRE_HOURS),
+        extra_claims={"email": email},
+    )
+
+
 def decode_token(token: str, expected_type: str) -> dict:
     try:
         payload = jwt.decode(

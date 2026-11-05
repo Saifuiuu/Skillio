@@ -96,7 +96,7 @@ def test_google_link_invalidates_password_on_unverified_account(client, db_sessi
         role=Role.candidate,
         status=UserStatus.active,
         auth_provider="local",
-        is_email_verified=False,
+        email_verified=False,
         token_version=0,
     )
     db_session.add(user)
@@ -133,7 +133,7 @@ def test_google_link_invalidates_password_on_unverified_account(client, db_sessi
     db_session.refresh(user)
     assert user.password_hash is None
     assert user.auth_provider == "google"
-    assert user.is_email_verified is True
+    assert user.email_verified is True
     assert user.token_version == 1
 
     login = client.post(

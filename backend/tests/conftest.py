@@ -37,6 +37,8 @@ _assert_test_db_isolated()
 def test_engine():
     url = settings.test_sqlalchemy_url
     engine = create_engine(url, pool_pre_ping=True, poolclass=NullPool)
+    # Recreate so model renames (e.g. email_verified) match the test DB.
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield engine
     engine.dispose()
