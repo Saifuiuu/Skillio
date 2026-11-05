@@ -1,5 +1,7 @@
 """Admin user management APIs behind require_admin."""
 
+from sqlalchemy import select
+
 from app.core.security import hash_password
 from app.models.user import Role, User, UserStatus
 
@@ -192,3 +194,88 @@ def test_suspend_user_then_login_forbidden(client, db_session):
     client.cookies.clear()
     login = _login(client, email)
     assert login.status_code == 403
+
+
+def test_suspend_invalidates_existing_access_token(client, db_session):
+    admin = _make_admin(db_session)
+    email = "suspend-token@example.com"
+    assert _register(client, email).status_code == 201
+    assert _login(client, email).status_code == 204
+    assert client.get("/auth/me").status_code == 200
+    stale_access = client.cookies.get("access_token")
+    assert stale_access
+
+    assert _login(client, admin.email).status_code == 204
+    users = client.get("/admin/users", params={"role": "candidate"}).json()["items"]
+    target = next(u for u in users if u["email"] == email)
+    assert (
+        client.patch(
+            f"/admin/users/{target['id']}/status",
+            json={"status": "suspended"},
+        ).status_code
+        == 200
+    )
+
+    client.cookies.clear()
+    client.cookies.set("access_token", stale_access)
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_reactivate_keeps_old_token_invalid_new_login_works(client, db_session):
+    admin = _make_admin(db_session)
+    email = "reactivate-token@example.com"
+    assert _register(client, email).status_code == 201
+    assert _login(client, email).status_code == 204
+    stale_access = client.cookies.get("access_token")
+    assert stale_access
+
+    assert _login(client, admin.email).status_code == 204
+    users = client.get("/admin/users", params={"role": "candidate"}).json()["items"]
+    target_id = next(u["id"] for u in users if u["email"] == email)
+
+    assert (
+        client.patch(
+            f"/admin/users/{target_id}/status",
+            json={"status": "suspended"},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.patch(
+            f"/admin/users/{target_id}/status",
+            json={"status": "active"},
+        ).status_code
+        == 200
+    )
+
+    client.cookies.clear()
+    client.cookies.set("access_token", stale_access)
+    assert client.get("/auth/me").status_code == 401
+
+    assert _login(client, email).status_code == 204
+    me = client.get("/auth/me")
+    assert me.status_code == 200
+    assert me.json()["email"] == email
+
+
+def test_re_suspend_does_not_bump_token_version(client, db_session):
+    admin = _make_admin(db_session)
+    email = "already-suspended@example.com"
+    assert _register(client, email).status_code == 201
+    user = db_session.scalar(select(User).where(User.email == email))
+    assert user is not None
+    user.status = UserStatus.suspended
+    user.token_version = 3
+    db_session.commit()
+
+    assert _login(client, admin.email).status_code == 204
+    res = client.patch(
+        f"/admin/users/{user.id}/status",
+        json={"status": "suspended"},
+    )
+    assert res.status_code == 200
+    assert res.json()["status"] == "suspended"
+
+    db_session.refresh(user)
+    assert user.status == UserStatus.suspended
+    assert user.token_version == 3

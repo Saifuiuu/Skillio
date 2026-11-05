@@ -85,7 +85,12 @@ def update_user_status(
             "Admins cannot suspend their own account",
         )
 
+    becoming_suspended = (
+        new_status == UserStatus.suspended and user.status != UserStatus.suspended
+    )
     user.status = new_status
+    if becoming_suspended:
+        user.token_version = user.token_version + 1
     db.commit()
     db.refresh(user)
     return user
