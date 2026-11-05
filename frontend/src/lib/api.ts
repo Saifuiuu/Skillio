@@ -3,6 +3,21 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000
 export type Role = "candidate" | "employer" | "admin" | "interviewer";
 export type UserStatus = "active" | "pending_verification" | "suspended";
 
+export type JobType = "full_time" | "part_time" | "contract" | "internship";
+export type WorkMode = "onsite" | "remote" | "hybrid";
+export type JobCategory =
+  | "frontend"
+  | "backend"
+  | "fullstack"
+  | "mobile"
+  | "data_science"
+  | "devops"
+  | "qa"
+  | "security"
+  | "other";
+export type JobStatus = "active" | "closed_filled" | "inactive";
+export type JobSource = "employer_posted" | "admin_added" | "scraped";
+
 export type User = {
   id: string;
   email: string;
@@ -10,6 +25,68 @@ export type User = {
   status: UserStatus;
   email_verified: boolean;
   created_at: string;
+};
+
+export type Job = {
+  id: string;
+  employer_id: string;
+  title: string;
+  company_name: string;
+  description: string;
+  location: string;
+  job_type: JobType;
+  work_mode: WorkMode;
+  category: JobCategory;
+  experience_min_years: number;
+  experience_max_years: number;
+  salary_min: number | null;
+  salary_max: number | null;
+  currency: string;
+  skills: string[];
+  source: JobSource;
+  status: JobStatus;
+  apply_url: string | null;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PaginatedJobs = {
+  items: Job[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+export type JobWritePayload = {
+  title: string;
+  company_name: string;
+  description: string;
+  location: string;
+  job_type: JobType;
+  work_mode: WorkMode;
+  category: JobCategory;
+  experience_min_years: number;
+  experience_max_years: number;
+  salary_min: number | null;
+  salary_max: number | null;
+  currency: string;
+  skills: string[];
+  apply_url?: string | null;
+};
+
+export type JobListParams = {
+  q?: string;
+  location?: string;
+  job_type?: JobType;
+  work_mode?: WorkMode;
+  category?: JobCategory;
+  company?: string;
+  skills?: string;
+  experience?: number;
+  salary_min?: number;
+  page?: number;
+  page_size?: number;
 };
 
 export class ApiError extends Error {
@@ -139,4 +216,44 @@ export async function completeGoogleSignup(
 
 export function fetchMe() {
   return authed<User>("/auth/me");
+}
+
+function toQuery(params: JobListParams): string {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    sp.set(key, String(value));
+  });
+  const q = sp.toString();
+  return q ? `?${q}` : "";
+}
+
+export function listJobs(params: JobListParams = {}) {
+  return request<PaginatedJobs>(`/jobs${toQuery(params)}`);
+}
+
+export function getJob(id: string) {
+  return request<Job>(`/jobs/${id}`);
+}
+
+export function listMyJobs(page = 1, pageSize = 20) {
+  return authed<PaginatedJobs>(`/jobs/mine${toQuery({ page, page_size: pageSize })}`);
+}
+
+export function createJob(payload: JobWritePayload) {
+  return authed<Job>("/jobs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateJob(id: string, payload: Partial<JobWritePayload>) {
+  return authed<Job>(`/jobs/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function closeJob(id: string) {
+  return authed<Job>(`/jobs/${id}/close`, { method: "POST" });
 }
