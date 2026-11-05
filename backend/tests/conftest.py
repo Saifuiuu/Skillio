@@ -8,6 +8,7 @@ from sqlalchemy.pool import NullPool
 import app.models  # noqa: F401
 from app.core.config import settings
 from app.core.database import Base, get_db
+from app.core.rate_limit import limiter
 from app.main import app as fastapi_app
 
 
@@ -31,6 +32,24 @@ def _assert_test_db_isolated() -> None:
 
 
 _assert_test_db_isolated()
+
+
+@pytest.fixture(autouse=True)
+def _rate_limit_off_by_default():
+    """Keep existing suite free of 429 noise; opt in via enable_rate_limiting."""
+    limiter.enabled = False
+    yield
+    limiter.enabled = False
+    limiter.reset()
+
+
+@pytest.fixture()
+def enable_rate_limiting():
+    limiter.reset()
+    limiter.enabled = True
+    yield
+    limiter.enabled = False
+    limiter.reset()
 
 
 @pytest.fixture(scope="session")

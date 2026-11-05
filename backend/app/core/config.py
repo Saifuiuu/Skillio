@@ -38,6 +38,16 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = ""
     ADMIN_PASSWORD: str = ""
 
+    # Rate limiting (in-memory; use Redis storage in multi-instance production).
+    RATE_LIMIT_ENABLED: bool = True
+    # Only trust X-Forwarded-For when behind a known reverse proxy.
+    TRUST_PROXY_HEADERS: bool = False
+    RATE_LIMIT_LOGIN_PER_MINUTE: int = 5
+    RATE_LIMIT_REGISTER_PER_MINUTE: int = 5
+    RATE_LIMIT_FORGOT_PASSWORD_PER_MINUTE: int = 3
+    RATE_LIMIT_RESEND_VERIFICATION_PER_MINUTE: int = 3
+    RATE_LIMIT_RESET_PASSWORD_PER_MINUTE: int = 5
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         # utf-8-sig strips a UTF-8 BOM if the editor re-adds one on save

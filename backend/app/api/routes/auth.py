@@ -27,6 +27,14 @@ from app.core.email import (
     build_password_reset_email,
     send_email,
 )
+from app.core.rate_limit import (
+    forgot_password_limit,
+    limiter,
+    login_limit,
+    register_limit,
+    resend_verification_limit,
+    reset_password_limit,
+)
 from app.core.security import (
     TokenError,
     create_access_token,
@@ -124,7 +132,9 @@ def _queue_verification_email(background_tasks: BackgroundTasks, user: User) -> 
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(register_limit)
 def register(
+    request: Request,
     data: RegisterRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -189,7 +199,9 @@ def verify_email(data: VerifyEmailRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(resend_verification_limit)
 def resend_verification(
+    request: Request,
     data: ResendVerificationRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -202,7 +214,9 @@ def resend_verification(
 
 
 @router.post("/login", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(login_limit)
 def login(
+    request: Request,
     data: LoginRequest,
     response: Response,
     db: Session = Depends(get_db),
@@ -259,7 +273,9 @@ def me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(forgot_password_limit)
 def forgot_password(
+    request: Request,
     data: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -296,7 +312,12 @@ def forgot_password(
 
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
-def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit(reset_password_limit)
+def reset_password(
+    request: Request,
+    data: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
     try:
         payload = decode_token(data.token, expected_type="password_reset")
     except TokenError as e:
