@@ -30,8 +30,8 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   admin: [
     { href: "/dashboard", label: "Dashboard", enabled: true },
-    { href: "/users", label: "Users", enabled: false },
-    { href: "/verifications", label: "Verifications", enabled: false },
+    { href: "/admin/users", label: "Users", enabled: true },
+    { href: "/admin/verifications", label: "Verifications", enabled: true },
     { href: "/jobs", label: "Jobs", enabled: false },
   ],
 };

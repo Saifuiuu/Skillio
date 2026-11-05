@@ -105,6 +105,24 @@ export default function DashboardPage() {
             </Link>
           </>
         )}
+        {user.role === "admin" && (
+          <>
+            {" · "}
+            <Link
+              href="/admin/users"
+              className="text-sm font-medium text-[#1E3A5F] underline"
+            >
+              Users
+            </Link>
+            {" · "}
+            <Link
+              href="/admin/verifications"
+              className="text-sm font-medium text-[#1E3A5F] underline"
+            >
+              Verifications
+            </Link>
+          </>
+        )}
       </p>
     </DashboardShell>
   );
