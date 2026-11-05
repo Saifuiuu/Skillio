@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<SignupRole>("candidate");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -35,12 +36,33 @@ export default function RegisterPage() {
     try {
       await register(email, password, role);
       await login(email, password);
-      router.push("/dashboard");
+      setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (done) {
+    return (
+      <AuthCard
+        title="Account created"
+        subtitle="Check your email to verify your address before continuing."
+      >
+        <p className="mb-4 text-sm text-slate-700">
+          We sent a verification link to your inbox. You can continue to the
+          dashboard now; a reminder will appear until you verify.
+        </p>
+        <button
+          type="button"
+          className={buttonClass}
+          onClick={() => router.push("/dashboard")}
+        >
+          Continue to dashboard
+        </button>
+      </AuthCard>
+    );
   }
 
   return (
