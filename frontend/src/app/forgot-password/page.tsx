@@ -59,11 +59,13 @@ export default function ForgotPasswordPage() {
           </button>
         </form>
       )}
-      <p className="mt-6 text-center text-sm text-slate-600">
-        <Link href="/login" className="font-medium text-[#1E3A5F] underline">
-          Back to sign in
-        </Link>
-      </p>
+      {!done && (
+        <p className="mt-6 text-center text-sm text-slate-600">
+          <Link href="/login" className="font-medium text-[#1E3A5F] underline">
+            Back to sign in
+          </Link>
+        </p>
+      )}
     </AuthCard>
   );
 }
