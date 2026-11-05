@@ -128,6 +128,15 @@ export async function resendVerification(email: string) {
   });
 }
 
+export async function completeGoogleSignup(
+  role: "candidate" | "employer" | "interviewer"
+) {
+  return request<User>("/auth/google/complete", {
+    method: "POST",
+    body: JSON.stringify({ role }),
+  });
+}
+
 export function fetchMe() {
   return authed<User>("/auth/me");
 }
