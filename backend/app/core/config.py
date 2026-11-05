@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@skillio.local"
 
+    # Optional — used by scripts/seed_admin.py only (never hardcode credentials).
+    ADMIN_EMAIL: str = ""
+    ADMIN_PASSWORD: str = ""
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         # utf-8-sig strips a UTF-8 BOM if the editor re-adds one on save
