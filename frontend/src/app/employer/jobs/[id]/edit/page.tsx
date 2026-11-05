@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import JobForm from "@/components/JobForm";
 import {
@@ -19,7 +19,7 @@ import {
 const FORBIDDEN_MSG =
   "Your account must have a verified email and admin approval before you can post jobs.";
 
-export default function EditJobPage() {
+function EditJobContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [user, setUser] = useState<User | null>(null);
@@ -126,5 +126,13 @@ export default function EditJobPage() {
         />
       )}
     </DashboardShell>
+  );
+}
+
+export default function EditJobPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <EditJobContent />
+    </Suspense>
   );
 }

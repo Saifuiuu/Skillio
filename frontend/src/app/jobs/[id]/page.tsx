@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatPostedDate,
@@ -13,7 +13,17 @@ import {
 } from "@/lib/jobs";
 import { ApiError, getJob, type Job } from "@/lib/api";
 
-export default function JobDetailPage() {
+function JobDetailSkeleton() {
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-10">
+      <Skeleton className="h-8 w-72" />
+      <Skeleton className="mt-4 h-4 w-48" />
+      <Skeleton className="mt-8 h-40 w-full" />
+    </main>
+  );
+}
+
+function JobDetailContent() {
   const params = useParams<{ id: string }>();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,13 +57,7 @@ export default function JobDetailPage() {
   }, [params.id]);
 
   if (loading) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        <Skeleton className="h-8 w-72" />
-        <Skeleton className="mt-4 h-4 w-48" />
-        <Skeleton className="mt-8 h-40 w-full" />
-      </main>
-    );
+    return <JobDetailSkeleton />;
   }
 
   if (notFound || !job) {
@@ -123,5 +127,13 @@ export default function JobDetailPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function JobDetailPage() {
+  return (
+    <Suspense fallback={<JobDetailSkeleton />}>
+      <JobDetailContent />
+    </Suspense>
   );
 }
