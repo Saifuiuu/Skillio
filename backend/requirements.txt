@@ -10,3 +10,6 @@ PyJWT
 httpx
 pytest
 slowapi
+pypdf
+python-docx
+python-multipart

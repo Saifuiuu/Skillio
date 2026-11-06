@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_RESET_PASSWORD_PER_MINUTE: int = 5
     RATE_LIMIT_GOOGLE_COMPLETE_PER_MINUTE: int = 5
 
+    # Resume uploads (local disk under UPLOAD_DIR/resumes/)
+    UPLOAD_DIR: str = "uploads"
+    MAX_RESUME_SIZE_MB: int = 5
+    MAX_ACTIVE_RESUMES: int = 3
+    RESUME_UPLOAD_RATE_LIMIT: str = "10/hour"
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         # utf-8-sig strips a UTF-8 BOM if the editor re-adds one on save
