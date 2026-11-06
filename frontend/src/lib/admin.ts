@@ -45,3 +45,20 @@ export function statusBadgeClass(status: UserStatus): string {
       return "bg-slate-100 text-slate-700";
   }
 }
+
+/** Needs Verifications flow (never approved employer/interviewer). */
+export function needsVerificationManage(user: {
+  role: Role;
+  status: UserStatus;
+  approved_at: string | null;
+}): boolean {
+  if (user.status === "pending_verification") return true;
+  if (
+    (user.role === "employer" || user.role === "interviewer") &&
+    user.status === "suspended" &&
+    !user.approved_at
+  ) {
+    return true;
+  }
+  return false;
+}

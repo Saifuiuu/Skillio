@@ -92,6 +92,7 @@ def test_list_users_pagination_and_filters(client, db_session):
     assert len(body["items"]) == 2
     for item in body["items"]:
         _assert_no_sensitive(item)
+        assert "approved_at" in item
 
     page2 = client.get("/admin/users", params={"page": 2, "page_size": 2})
     assert page2.status_code == 200
@@ -131,6 +132,7 @@ def test_get_user_ok(client, db_session):
     assert res.status_code == 200
     body = res.json()
     assert body["id"] == target_id
+    assert "approved_at" in body
     _assert_no_sensitive(body)
 
 
@@ -141,10 +143,10 @@ def test_get_user_404(client, db_session):
     assert res.status_code == 404
 
 
-# --- approve / suspend ---
+# --- approve endpoint ---
 
 
-def test_approve_pending_verification(client, db_session):
+def test_approve_pending_employer(client, db_session):
     admin = _make_admin(db_session)
     assert _register(client, "employer@example.com", role="employer").status_code == 201
     assert _login(client, admin.email).status_code == 204
@@ -153,14 +155,153 @@ def test_approve_pending_verification(client, db_session):
         "/admin/users", params={"status": "pending_verification"}
     ).json()["items"][0]
     assert pending["status"] == "pending_verification"
+    assert pending["approved_at"] is None
 
+    res = client.post(f"/admin/users/{pending['id']}/approve")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "active"
+    assert body["approved_at"] is not None
+    _assert_no_sensitive(body)
+
+
+def test_approve_pending_interviewer(client, db_session):
+    admin = _make_admin(db_session)
+    assert (
+        _register(client, "interviewer@example.com", role="interviewer").status_code
+        == 201
+    )
+    assert _login(client, admin.email).status_code == 204
+
+    pending = client.get(
+        "/admin/users",
+        params={"status": "pending_verification", "role": "interviewer"},
+    ).json()["items"][0]
+
+    res = client.post(f"/admin/users/{pending['id']}/approve")
+    assert res.status_code == 200
+    assert res.json()["status"] == "active"
+    assert res.json()["approved_at"] is not None
+
+
+def test_approve_candidate_409(client, db_session):
+    admin = _make_admin(db_session)
+    assert _register(client, "cand-approve@example.com").status_code == 201
+    assert _login(client, admin.email).status_code == 204
+    users = client.get("/admin/users", params={"role": "candidate"}).json()["items"]
+    target = next(u for u in users if u["email"] == "cand-approve@example.com")
+
+    res = client.post(f"/admin/users/{target['id']}/approve")
+    assert res.status_code == 409
+
+
+def test_approve_already_active_409(client, db_session):
+    admin = _make_admin(db_session)
+    assert _register(client, "emp-active@example.com", role="employer").status_code == 201
+    user = db_session.scalar(
+        select(User).where(User.email == "emp-active@example.com")
+    )
+    assert user is not None
+    user.status = UserStatus.active
+    user.approved_at = user.created_at
+    db_session.commit()
+
+    assert _login(client, admin.email).status_code == 204
+    res = client.post(f"/admin/users/{user.id}/approve")
+    assert res.status_code == 409
+
+
+def test_approve_non_admin_403(client, db_session):
+    assert _register(client, "emp-na@example.com", role="employer").status_code == 201
+    user = db_session.scalar(select(User).where(User.email == "emp-na@example.com"))
+    assert user is not None
+
+    email = "cand-na@example.com"
+    assert _register(client, email).status_code == 201
+    assert _login(client, email).status_code == 204
+    res = client.post(f"/admin/users/{user.id}/approve")
+    assert res.status_code == 403
+
+
+def test_approve_rejected_employer(client, db_session):
+    admin = _make_admin(db_session)
+    assert _register(client, "emp-rej@example.com", role="employer").status_code == 201
+    user = db_session.scalar(select(User).where(User.email == "emp-rej@example.com"))
+    assert user is not None
+    user.status = UserStatus.suspended
+    user.approved_at = None
+    db_session.commit()
+
+    assert _login(client, admin.email).status_code == 204
+    res = client.post(f"/admin/users/{user.id}/approve")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "active"
+    assert body["approved_at"] is not None
+
+
+# --- status patch guards ---
+
+
+def test_patch_pending_to_active_409(client, db_session):
+    admin = _make_admin(db_session)
+    assert _register(client, "emp-patch@example.com", role="employer").status_code == 201
+    assert _login(client, admin.email).status_code == 204
+
+    pending = client.get(
+        "/admin/users", params={"status": "pending_verification"}
+    ).json()["items"][0]
     res = client.patch(
         f"/admin/users/{pending['id']}/status",
         json={"status": "active"},
     )
+    assert res.status_code == 409
+    assert "verifications" in res.json()["detail"].lower()
+
+
+def test_patch_never_approved_suspended_to_active_409(client, db_session):
+    admin = _make_admin(db_session)
+    assert _register(client, "emp-na2@example.com", role="employer").status_code == 201
+    user = db_session.scalar(select(User).where(User.email == "emp-na2@example.com"))
+    assert user is not None
+    user.status = UserStatus.suspended
+    user.approved_at = None
+    db_session.commit()
+
+    assert _login(client, admin.email).status_code == 204
+    res = client.patch(
+        f"/admin/users/{user.id}/status",
+        json={"status": "active"},
+    )
+    assert res.status_code == 409
+
+
+def test_approved_employer_suspend_then_activate(client, db_session):
+    admin = _make_admin(db_session)
+    assert _register(client, "emp-ok@example.com", role="employer").status_code == 201
+    assert _login(client, admin.email).status_code == 204
+
+    pending = client.get(
+        "/admin/users",
+        params={"status": "pending_verification", "role": "employer"},
+    ).json()["items"]
+    target = next(u for u in pending if u["email"] == "emp-ok@example.com")
+    assert client.post(f"/admin/users/{target['id']}/approve").status_code == 200
+
+    assert (
+        client.patch(
+            f"/admin/users/{target['id']}/status",
+            json={"status": "suspended"},
+        ).status_code
+        == 200
+    )
+    res = client.patch(
+        f"/admin/users/{target['id']}/status",
+        json={"status": "active"},
+    )
     assert res.status_code == 200
     assert res.json()["status"] == "active"
-    _assert_no_sensitive(res.json())
+    assert res.json()["approved_at"] is not None
 
 
 def test_admin_cannot_suspend_self(client, db_session):
@@ -179,7 +320,6 @@ def test_suspend_user_then_login_forbidden(client, db_session):
     email = "to-suspend@example.com"
     assert _register(client, email).status_code == 201
 
-    # Resolve target id while admin is logged in
     assert _login(client, admin.email).status_code == 204
     users = client.get("/admin/users", params={"role": "candidate"}).json()["items"]
     target = next(u for u in users if u["email"] == email)

@@ -6,12 +6,13 @@ import { inputClass } from "@/components/AuthCard";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  ADMIN_ROLES,
+  ADMIN_STATUSES,
   formatUserDate,
   labelRole,
   labelUserStatus,
+  needsVerificationManage,
   statusBadgeClass,
-  ADMIN_ROLES,
-  ADMIN_STATUSES,
 } from "@/lib/admin";
 import {
   fetchMe,
@@ -85,9 +86,7 @@ export default function AdminUsersPage() {
     if (
       !window.confirm(
         `${action} ${target.email}?${
-          next === "suspended"
-            ? " Their sessions will be invalidated."
-            : ""
+          next === "suspended" ? " Their sessions will be invalidated." : ""
         }`
       )
     ) {
@@ -204,11 +203,10 @@ export default function AdminUsersPage() {
             {!loading &&
               items.map((row) => {
                 const isSelf = row.id === user.id;
-                const canSuspend =
-                  !isSelf &&
-                  (row.status === "active" ||
-                    row.status === "pending_verification");
-                const canActivate = !isSelf && row.status === "suspended";
+                const manageElsewhere = needsVerificationManage(row);
+                const canSuspend = !isSelf && !manageElsewhere && row.status === "active";
+                const canActivate =
+                  !isSelf && !manageElsewhere && row.status === "suspended";
 
                 return (
                   <tr key={row.id} className="border-b border-slate-100">
@@ -230,6 +228,11 @@ export default function AdminUsersPage() {
                       {formatUserDate(row.created_at)}
                     </td>
                     <td className="px-4 py-3">
+                      {manageElsewhere && !isSelf && (
+                        <span className="text-xs text-slate-500">
+                          Manage in Verifications
+                        </span>
+                      )}
                       {canSuspend && (
                         <button
                           type="button"

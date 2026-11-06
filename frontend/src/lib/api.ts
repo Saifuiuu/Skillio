@@ -24,6 +24,7 @@ export type User = {
   role: Role;
   status: UserStatus;
   email_verified: boolean;
+  approved_at: string | null;
   created_at: string;
 };
 
@@ -279,7 +280,9 @@ export function closeJob(id: string) {
 }
 
 export function listAdminUsers(params: AdminUserListParams = {}) {
-  return authed<PaginatedUsers>(`/admin/users${toQuery(params)}`);
+  return authed<PaginatedUsers>(
+    `/admin/users${toQuery(params as Record<string, string | number | undefined | null>)}`
+  );
 }
 
 export function updateUserStatus(
@@ -290,4 +293,8 @@ export function updateUserStatus(
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
+}
+
+export function approveUser(userId: string) {
+  return authed<User>(`/admin/users/${userId}/approve`, { method: "POST" });
 }
