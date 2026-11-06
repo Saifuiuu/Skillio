@@ -76,3 +76,7 @@ def reset_password_limit() -> str:
 
 def google_complete_limit() -> str:
     return f"{settings.RATE_LIMIT_GOOGLE_COMPLETE_PER_MINUTE}/minute"
+
+
+def resume_upload_limit() -> str:
+    return settings.RESUME_UPLOAD_RATE_LIMIT
