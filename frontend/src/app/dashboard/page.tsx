@@ -94,6 +94,17 @@ export default function DashboardPage() {
         <Link href="/jobs" className="text-sm font-medium text-[#1E3A5F] underline">
           Browse jobs
         </Link>
+        {user.role === "candidate" && (
+          <>
+            {" · "}
+            <Link
+              href="/candidate/resumes"
+              className="text-sm font-medium text-[#1E3A5F] underline"
+            >
+              Manage your CVs
+            </Link>
+          </>
+        )}
         {user.role === "employer" && (
           <>
             {" · "}
