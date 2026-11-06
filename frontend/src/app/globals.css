@@ -127,4 +127,9 @@
   html {
     @apply font-sans;
     }
+  /* Hide Edge's built-in password reveal/clear so our custom eye icon is alone. */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
 }
