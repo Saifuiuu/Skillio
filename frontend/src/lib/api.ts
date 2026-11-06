@@ -111,7 +111,12 @@ function errorMessage(detail: unknown): string {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
-  if (options.body) headers.set("Content-Type", "application/json");
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+  // Let the browser set multipart boundary for FormData.
+  if (options.body && !isFormData && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
   let res: Response;
   try {
@@ -297,4 +302,85 @@ export function updateUserStatus(
 
 export function approveUser(userId: string) {
   return authed<User>(`/admin/users/${userId}/approve`, { method: "POST" });
+}
+
+export type ExtractionStatus = "ok" | "empty" | "failed";
+export type ResumeStatus = "active" | "archived";
+
+export type Resume = {
+  id: string;
+  title: string;
+  original_filename: string;
+  content_type: string;
+  file_size_bytes: number;
+  extraction_status: ExtractionStatus;
+  status: ResumeStatus;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+};
+
+export type ResumeDetail = Resume & {
+  extracted_text: string | null;
+};
+
+export function listResumes(status: ResumeStatus = "active") {
+  return authed<Resume[]>(`/resumes?status=${status}`);
+}
+
+export function getResume(id: string) {
+  return authed<ResumeDetail>(`/resumes/${id}`);
+}
+
+export function uploadResume(title: string, file: File) {
+  const body = new FormData();
+  body.append("title", title);
+  body.append("file", file);
+  return authed<Resume>("/resumes", { method: "POST", body });
+}
+
+export function renameResume(id: string, title: string) {
+  return authed<Resume>(`/resumes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
+}
+
+export function archiveResume(id: string) {
+  return authed<Resume>(`/resumes/${id}/archive`, { method: "POST" });
+}
+
+async function fetchAuthedBlob(path: string): Promise<Response> {
+  const doFetch = () =>
+    fetch(`${API_URL}${path}`, { credentials: "include" });
+
+  let res = await doFetch();
+  if (res.status === 401 && (await refreshAccessToken())) {
+    res = await doFetch();
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, errorMessage(data?.detail));
+  }
+  return res;
+}
+
+export async function downloadResumeFile(id: string, fallbackName: string) {
+  const res = await fetchAuthedBlob(`/resumes/${id}/file`);
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  const plainMatch = /filename="([^"]+)"/i.exec(disposition);
+  const filename = utfMatch
+    ? decodeURIComponent(utfMatch[1])
+    : plainMatch?.[1] ?? fallbackName;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
