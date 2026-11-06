@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { inputClass } from "@/components/AuthCard";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -12,6 +11,7 @@ import {
   statusBadgeClass,
 } from "@/lib/admin";
 import {
+  approveUser,
   fetchMe,
   listAdminUsers,
   logout as apiLogout,
@@ -22,20 +22,49 @@ import {
 
 const PAGE_SIZE = 20;
 
-const ROLE_OPTIONS: { value: "" | "employer" | "interviewer"; label: string }[] =
-  [
-    { value: "", label: "Employers & interviewers" },
-    { value: "employer", label: "Employer" },
-    { value: "interviewer", label: "Interviewer" },
-  ];
+type Tab = "pending" | "rejected";
+
+async function loadMerged(
+  status: "pending_verification" | "suspended",
+  page: number
+): Promise<{ items: User[]; total: number }> {
+  const [employers, interviewers] = await Promise.all([
+    listAdminUsers({
+      page: 1,
+      page_size: 100,
+      role: "employer",
+      status,
+    }),
+    listAdminUsers({
+      page: 1,
+      page_size: 100,
+      role: "interviewer",
+      status,
+    }),
+  ]);
+
+  let merged = [...employers.items, ...interviewers.items];
+  if (status === "suspended") {
+    merged = merged.filter((u) => !u.approved_at);
+  }
+  merged.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  const start = (page - 1) * PAGE_SIZE;
+  return {
+    total: merged.length,
+    items: merged.slice(start, start + PAGE_SIZE),
+  };
+}
 
 export default function AdminVerificationsPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [tab, setTab] = useState<Tab>("pending");
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [role, setRole] = useState<"" | "employer" | "interviewer">("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -44,39 +73,11 @@ export default function AdminVerificationsPage() {
   const loadUsers = useCallback(async () => {
     setError(null);
     try {
-      if (role) {
-        const res = await listAdminUsers({
-          page,
-          page_size: PAGE_SIZE,
-          role,
-          status: "pending_verification",
-        });
-        setItems(res.items);
-        setTotal(res.total);
-      } else {
-        // Backend filters one role at a time; merge employer + interviewer queues.
-        const [employers, interviewers] = await Promise.all([
-          listAdminUsers({
-            page: 1,
-            page_size: 100,
-            role: "employer",
-            status: "pending_verification",
-          }),
-          listAdminUsers({
-            page: 1,
-            page_size: 100,
-            role: "interviewer",
-            status: "pending_verification",
-          }),
-        ]);
-        const merged = [...employers.items, ...interviewers.items].sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        const start = (page - 1) * PAGE_SIZE;
-        setTotal(merged.length);
-        setItems(merged.slice(start, start + PAGE_SIZE));
-      }
+      const status =
+        tab === "pending" ? "pending_verification" : "suspended";
+      const res = await loadMerged(status, page);
+      setItems(res.items);
+      setTotal(res.total);
     } catch {
       setError("Something went wrong. Please try again.");
       setItems([]);
@@ -84,7 +85,7 @@ export default function AdminVerificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, role]);
+  }, [page, tab]);
 
   useEffect(() => {
     fetchMe()
@@ -112,7 +113,7 @@ export default function AdminVerificationsPage() {
     setMessage(null);
     setError(null);
     try {
-      await updateUserStatus(target.id, "active");
+      await approveUser(target.id);
       setMessage(`${target.email} has been approved.`);
       await loadUsers();
     } catch {
@@ -155,22 +156,37 @@ export default function AdminVerificationsPage() {
         Approve or reject employers and interviewers waiting for review.
       </p>
 
-      <div className="mt-6 max-w-sm">
-        <select
-          className={inputClass}
-          value={role}
-          onChange={(e) => {
-            setRole(e.target.value as "" | "employer" | "interviewer");
+      <div className="mt-6 flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setTab("pending");
             setPage(1);
             setLoading(true);
           }}
+          className={`rounded-md border px-3 py-1.5 text-sm ${
+            tab === "pending"
+              ? "border-[#1E3A5F] bg-[#1E3A5F] text-white"
+              : "border-slate-300 bg-white text-slate-700"
+          }`}
         >
-          {ROLE_OPTIONS.map((o) => (
-            <option key={o.label} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          Pending
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTab("rejected");
+            setPage(1);
+            setLoading(true);
+          }}
+          className={`rounded-md border px-3 py-1.5 text-sm ${
+            tab === "rejected"
+              ? "border-[#1E3A5F] bg-[#1E3A5F] text-white"
+              : "border-slate-300 bg-white text-slate-700"
+          }`}
+        >
+          Rejected
+        </button>
       </div>
 
       {message && (
@@ -212,7 +228,9 @@ export default function AdminVerificationsPage() {
                   colSpan={6}
                   className="px-4 py-10 text-center text-slate-600"
                 >
-                  No pending verifications
+                  {tab === "pending"
+                    ? "No pending verifications"
+                    : "No rejected accounts"}
                 </td>
               </tr>
             )}
@@ -252,14 +270,16 @@ export default function AdminVerificationsPage() {
                       >
                         {actingId === row.id ? "…" : "Approve"}
                       </button>
-                      <button
-                        type="button"
-                        disabled={actingId === row.id}
-                        onClick={() => onReject(row)}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs disabled:opacity-60"
-                      >
-                        Reject
-                      </button>
+                      {tab === "pending" && (
+                        <button
+                          type="button"
+                          disabled={actingId === row.id}
+                          onClick={() => onReject(row)}
+                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs disabled:opacity-60"
+                        >
+                          Reject
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

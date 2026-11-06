@@ -12,6 +12,7 @@ class UserOut(BaseModel):
     role: Role
     status: UserStatus
     email_verified: bool
+    approved_at: datetime | None = None
     created_at: datetime
 
 #it tells pydantic if data is in the form alchemy object you can extract data 

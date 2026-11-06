@@ -48,6 +48,11 @@ class User(Base):
         Integer, nullable=False, server_default="0", default=0
     )
 
+    # Set when an admin approves an employer/interviewer via /admin/users/{id}/approve.
+    approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

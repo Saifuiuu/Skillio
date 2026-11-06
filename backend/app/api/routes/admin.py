@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -15,6 +16,11 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 require_admin = require_role("admin")
 
 _MAX_PAGE_SIZE = 100
+_APPROVAL_ROLES = {Role.employer, Role.interviewer}
+_NOT_APPROVED_MSG = (
+    "This account has not been approved. Use Verifications to approve it."
+)
+_CANNOT_APPROVE_MSG = "This user cannot be approved."
 
 
 @router.get("/ping")
@@ -67,6 +73,30 @@ def get_user(
     return user
 
 
+@router.post("/users/{user_id}/approve", response_model=UserOut)
+def approve_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    eligible_pending = user.status == UserStatus.pending_verification
+    eligible_rejected = (
+        user.status == UserStatus.suspended and user.approved_at is None
+    )
+    if user.role not in _APPROVAL_ROLES or not (eligible_pending or eligible_rejected):
+        raise HTTPException(status.HTTP_409_CONFLICT, _CANNOT_APPROVE_MSG)
+
+    user.status = UserStatus.active
+    user.approved_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 @router.patch("/users/{user_id}/status", response_model=UserOut)
 def update_user_status(
     user_id: uuid.UUID,
@@ -84,6 +114,12 @@ def update_user_status(
             status.HTTP_400_BAD_REQUEST,
             "Admins cannot suspend their own account",
         )
+
+    if new_status == UserStatus.active:
+        if user.status == UserStatus.pending_verification:
+            raise HTTPException(status.HTTP_409_CONFLICT, _NOT_APPROVED_MSG)
+        if user.role in _APPROVAL_ROLES and user.approved_at is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, _NOT_APPROVED_MSG)
 
     becoming_suspended = (
         new_status == UserStatus.suspended and user.status != UserStatus.suspended
