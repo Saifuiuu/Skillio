@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
     >
       {done ? (
         <div className="space-y-4">
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-foreground/80">
             If that email is registered, a reset link has been sent. Check your inbox
             (and the backend console if SMTP is not configured).
           </p>
@@ -53,15 +53,15 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <button type="submit" disabled={loading} className={buttonClass}>
             {loading ? "Sending..." : "Send reset link"}
           </button>
         </form>
       )}
       {!done && (
-        <p className="mt-6 text-center text-sm text-slate-600">
-          <Link href="/login" className="font-medium text-[#1E3A5F] underline">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          <Link href="/login" className="font-medium text-brand underline">
             Back to sign in
           </Link>
         </p>

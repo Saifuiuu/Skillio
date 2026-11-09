@@ -83,16 +83,16 @@ function EditJobContent() {
   return (
     <DashboardShell email={user.email} role={user.role} onLogout={logout}>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-slate-900">Edit job</h2>
-        <Link href="/employer/jobs" className="text-sm font-medium text-[#1E3A5F] underline">
+        <h2 className="text-2xl font-semibold text-foreground">Edit job</h2>
+        <Link href="/employer/jobs" className="text-sm font-medium text-brand underline">
           Back to My Jobs
         </Link>
       </div>
 
-      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
+      {loadError && <p className="text-sm text-destructive">{loadError}</p>}
 
       {job && job.status !== "active" && (
-        <p className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        <p className="mb-4 rounded-md border border-border bg-muted p-3 text-sm text-foreground/80">
           This job is marked as filled and can no longer be edited.
         </p>
       )}

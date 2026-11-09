@@ -90,13 +90,13 @@ function ResumeDetailContent() {
   if (notFound || !resume) {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center px-4 py-10">
-        <h1 className="text-2xl font-semibold text-slate-900">CV not found</h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <h1 className="text-2xl font-semibold text-foreground">CV not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           This CV may have been removed or the link is invalid.
         </p>
         <Link
           href="/candidate/resumes"
-          className="mt-6 text-sm font-medium text-[#1E3A5F] underline"
+          className="mt-6 text-sm font-medium text-brand underline"
         >
           Back to My CVs
         </Link>
@@ -115,15 +115,15 @@ function ResumeDetailContent() {
     <DashboardShell email={user.email} role={user.role} onLogout={logout}>
       <Link
         href="/candidate/resumes"
-        className="text-sm font-medium text-[#1E3A5F] underline"
+        className="text-sm font-medium text-brand underline"
       >
         Back to My CVs
       </Link>
-      <h2 className="mt-4 text-2xl font-semibold text-slate-900">{resume.title}</h2>
-      <p className="mt-2 text-sm text-slate-600">
+      <h2 className="mt-4 text-2xl font-semibold text-foreground">{resume.title}</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
         {resume.original_filename} · {formatFileSize(resume.file_size_bytes)}
       </p>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-1 text-sm text-muted-foreground">
         Status: {resume.status === "active" ? "Active" : "Archived"} · Uploaded{" "}
         {formatResumeDate(resume.created_at)}
         {resume.archived_at && (
@@ -139,20 +139,20 @@ function ResumeDetailContent() {
       </p>
 
       <section className="mt-8">
-        <h3 className="text-lg font-semibold text-slate-900">Extracted text</h3>
+        <h3 className="text-lg font-semibold text-foreground">Extracted text</h3>
         {!text ? (
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Text could not be read from this file
           </p>
         ) : (
           <>
-            <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-800">
+            <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted p-4 text-sm text-foreground">
               {preview}
             </pre>
             {needsTruncate && (
               <button
                 type="button"
-                className="mt-2 text-sm font-medium text-[#1E3A5F] underline"
+                className="mt-2 text-sm font-medium text-brand underline"
                 onClick={() => setExpanded((v) => !v)}
               >
                 {expanded ? "Show less" : "Show more"}

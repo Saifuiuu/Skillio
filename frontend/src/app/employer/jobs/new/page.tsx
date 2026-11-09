@@ -61,8 +61,8 @@ export default function NewJobPage() {
   return (
     <DashboardShell email={user.email} role={user.role} onLogout={logout}>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-slate-900">Post a job</h2>
-        <Link href="/employer/jobs" className="text-sm font-medium text-[#1E3A5F] underline">
+        <h2 className="text-2xl font-semibold text-foreground">Post a job</h2>
+        <Link href="/employer/jobs" className="text-sm font-medium text-brand underline">
           Back to My Jobs
         </Link>
       </div>

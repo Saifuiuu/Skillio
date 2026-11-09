@@ -78,10 +78,10 @@ export default function SelectRolePage() {
           {ROLES.map((r) => (
             <label
               key={r.value}
-              className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm ${
+              className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 text-sm transition-all duration-150 ${
                 role === r.value
-                  ? "border-[#1E3A5F] bg-slate-50"
-                  : "border-slate-300"
+                  ? "border-brand bg-brand/5 ring-1 ring-brand"
+                  : "border-border hover:border-foreground/30"
               }`}
             >
               <input
@@ -94,7 +94,7 @@ export default function SelectRolePage() {
               />
               <span>
                 <span className="block font-medium">{r.label}</span>
-                <span className="text-slate-600">{r.hint}</span>
+                <span className="text-muted-foreground">{r.hint}</span>
                 {r.note && (
                   <span className="mt-1 block text-xs text-amber-800">
                     {r.note}
@@ -105,13 +105,13 @@ export default function SelectRolePage() {
           ))}
         </div>
         {error && (
-          <div className="space-y-1 text-sm text-red-600">
+          <div className="space-y-1 text-sm text-destructive">
             <p>{error}</p>
             {showLoginLink && (
               <p>
                 <Link
                   href="/login"
-                  className="font-medium text-[#1E3A5F] underline"
+                  className="font-medium text-brand underline"
                 >
                   Back to sign in
                 </Link>

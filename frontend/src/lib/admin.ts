@@ -42,7 +42,7 @@ export function statusBadgeClass(status: UserStatus): string {
     case "suspended":
       return "bg-red-50 text-red-800";
     default:
-      return "bg-slate-100 text-slate-700";
+      return "bg-muted text-foreground/80";
   }
 }
 

@@ -63,11 +63,11 @@ function JobDetailContent() {
   if (notFound || !job) {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center px-4 py-10">
-        <h1 className="text-2xl font-semibold text-slate-900">Job not found</h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <h1 className="text-2xl font-semibold text-foreground">Job not found</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           This job may be closed or the link is invalid.
         </p>
-        <Link href="/jobs" className="mt-6 text-sm font-medium text-[#1E3A5F] underline">
+        <Link href="/jobs" className="mt-6 text-sm font-medium text-brand underline">
           Back to jobs
         </Link>
       </main>
@@ -75,20 +75,23 @@ function JobDetailContent() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FAFAF9] px-4 py-10">
-      <div className="mx-auto max-w-3xl rounded-lg border border-slate-200 bg-white p-6 md:p-8">
-        <Link href="/jobs" className="text-sm font-medium text-[#1E3A5F] underline">
-          Back to jobs
+    <main className="page-transition min-h-screen bg-background px-4 py-10">
+      <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card p-6 md:p-8">
+        <Link
+          href="/jobs"
+          className="text-sm font-medium text-brand underline-offset-2 hover:underline transition-colors duration-150 cursor-pointer"
+        >
+          ← Back to jobs
         </Link>
-        <h1 className="mt-4 text-3xl font-semibold text-slate-900">{job.title}</h1>
-        <p className="mt-2 text-slate-600">
+        <h1 className="mt-4 text-3xl font-semibold text-foreground">{job.title}</h1>
+        <p className="mt-2 text-muted-foreground">
           {job.company_name} · {job.location}
         </p>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Posted {formatPostedDate(job.created_at)} · {labelCategory(job.category)}
         </p>
 
-        <div className="mt-6 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
+        <div className="mt-6 grid gap-3 text-sm text-foreground/80 sm:grid-cols-2">
           <p>
             <span className="font-medium">Type:</span> {labelJobType(job.job_type)}
           </p>
@@ -105,20 +108,20 @@ function JobDetailContent() {
         </div>
 
         <section className="mt-8">
-          <h2 className="text-lg font-semibold text-slate-900">Description</h2>
-          <p className="mt-2 whitespace-pre-wrap text-slate-700">{job.description}</p>
+          <h2 className="text-lg font-semibold text-foreground">Description</h2>
+          <p className="mt-2 whitespace-pre-wrap text-foreground/80">{job.description}</p>
         </section>
 
         <section className="mt-8">
-          <h2 className="text-lg font-semibold text-slate-900">Skills</h2>
+          <h2 className="text-lg font-semibold text-foreground">Skills</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {job.skills.length === 0 && (
-              <p className="text-sm text-slate-500">No skills listed.</p>
+              <p className="text-sm text-muted-foreground">No skills listed.</p>
             )}
             {job.skills.map((skill) => (
               <span
                 key={skill}
-                className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+                className="rounded-full bg-muted px-3 py-1 text-xs text-foreground/80"
               >
                 {skill}
               </span>

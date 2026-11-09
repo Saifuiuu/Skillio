@@ -80,18 +80,18 @@ export default function EmployerJobsPage() {
   return (
     <DashboardShell email={user.email} role={user.role} onLogout={logout}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-slate-900">My Jobs</h2>
+        <h2 className="text-2xl font-semibold text-foreground">My Jobs</h2>
         <Link href="/employer/jobs/new" className={`${buttonClass} w-auto px-4`}>
           New Job
         </Link>
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
       {loading ? (
-        <p className="mt-6 text-sm text-slate-600">Loading jobs…</p>
+        <p className="mt-6 text-sm text-muted-foreground">Loading jobs…</p>
       ) : jobs.length === 0 ? (
-        <p className="mt-6 rounded-md border border-slate-200 bg-white p-6 text-sm text-slate-600">
+        <p className="mt-6 rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
           You have not posted any jobs yet.
         </p>
       ) : (
@@ -99,12 +99,12 @@ export default function EmployerJobsPage() {
           {jobs.map((job) => (
             <li
               key={job.id}
-              className="rounded-lg border border-slate-200 bg-white p-4"
+              className="rounded-3xl border border-border bg-card p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">{job.title}</h3>
-                  <p className="text-sm text-slate-600">
+                  <h3 className="text-lg font-semibold text-foreground">{job.title}</h3>
+                  <p className="text-sm text-muted-foreground">
                     {job.location} · {formatSalary(job)} · Posted{" "}
                     {formatPostedDate(job.created_at)}
                   </p>
@@ -113,7 +113,7 @@ export default function EmployerJobsPage() {
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                     job.status === "active"
                       ? "bg-emerald-50 text-emerald-800"
-                      : "bg-slate-100 text-slate-700"
+                      : "bg-muted text-foreground/80"
                   }`}
                 >
                   {labelJobStatus(job.status)}
@@ -124,7 +124,7 @@ export default function EmployerJobsPage() {
                   <>
                     <Link
                       href={`/employer/jobs/${job.id}/edit`}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+                      className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer"
                     >
                       Edit
                     </Link>
@@ -132,7 +132,7 @@ export default function EmployerJobsPage() {
                       type="button"
                       disabled={closingId === job.id}
                       onClick={() => onClose(job)}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-60"
+                      className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {closingId === job.id ? "Closing..." : "Mark as Filled"}
                     </button>
@@ -140,7 +140,7 @@ export default function EmployerJobsPage() {
                 )}
                 <Link
                   href={`/jobs/${job.id}`}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+                  className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer"
                 >
                   View
                 </Link>

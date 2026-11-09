@@ -47,7 +47,7 @@ function VerifyEmailContent() {
   if (status === "loading") {
     return (
       <AuthCard title="Verify email" subtitle="Confirming your verification link…">
-        <p className="text-sm text-slate-600">Please wait a moment.</p>
+        <p className="text-sm text-muted-foreground">Please wait a moment.</p>
       </AuthCard>
     );
   }
@@ -83,13 +83,13 @@ function VerifyEmailContent() {
             autoComplete="email"
           />
         </div>
-        {resendMsg && <p className="text-sm text-slate-700">{resendMsg}</p>}
+        {resendMsg && <p className="text-sm text-foreground/80">{resendMsg}</p>}
         <button type="submit" disabled={resendLoading} className={buttonClass}>
           {resendLoading ? "Sending..." : "Resend verification email"}
         </button>
       </form>
-      <p className="mt-6 text-center text-sm text-slate-600">
-        <Link href="/login" className="font-medium text-[#1E3A5F] underline">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        <Link href="/login" className="font-medium text-brand underline">
           Back to sign in
         </Link>
       </p>
@@ -101,7 +101,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+        <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
           Loading...
         </main>
       }
