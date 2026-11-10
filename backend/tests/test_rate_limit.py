@@ -81,6 +81,7 @@ def test_register_limit_then_429(client, enable_rate_limiting):
                 "email": f"rl-reg-{i}@example.com",
                 "password": "password1",
                 "role": "candidate",
+                "full_name": "Test User",
             },
         )
         assert res.status_code == 201
@@ -91,6 +92,7 @@ def test_register_limit_then_429(client, enable_rate_limiting):
             "email": "rl-reg-overflow@example.com",
             "password": "password1",
             "role": "candidate",
+            "full_name": "Test User",
         },
     )
     assert blocked.status_code == 429
