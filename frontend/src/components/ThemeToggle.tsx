@@ -1,8 +1,11 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { cn } from "@/lib/utils";
+
+const emptySubscribe = () => () => {};
 
 export default function ThemeToggle({
   className,
@@ -12,6 +15,24 @@ export default function ThemeToggle({
   variant?: "ghost" | "rail";
 }) {
   const { theme, toggleTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
+  if (!mounted) {
+    return (
+      <div
+        className={cn(
+          "relative inline-flex size-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-full",
+          className
+        )}
+        aria-hidden="true"
+      />
+    );
+  }
+
   const dark = theme === "dark";
 
   return (
