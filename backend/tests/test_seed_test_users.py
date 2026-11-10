@@ -21,6 +21,7 @@ def test_seed_test_users_idempotent_and_reset(db_session):
         assert user.role == spec.role
         assert user.status == spec.status
         assert user.email_verified is spec.email_verified
+        assert user.full_name == spec.full_name
         if spec.approved:
             assert user.approved_at is not None
         else:
@@ -56,3 +57,20 @@ def test_seed_test_users_idempotent_and_reset(db_session):
     assert pending.role == Role.employer
     assert pending.password_hash is not None
     assert DEMO_PASSWORD  # password constant used by seed
+
+
+def test_seed_test_users_main_no_detached_instance_error(db_session, test_engine, capsys, monkeypatch):
+    from sqlalchemy.orm import sessionmaker
+
+    import scripts.seed_test_users as seed_script
+
+    TestSession = sessionmaker(bind=test_engine)
+    monkeypatch.setattr(seed_script, "SessionLocal", TestSession)
+
+    code = seed_script.main([])
+    assert code == 0
+    captured = capsys.readouterr()
+    assert "Email" in captured.out
+    assert "Name" in captured.out
+    assert "Test Candidate" in captured.out
+    assert "Test Employer Active" in captured.out

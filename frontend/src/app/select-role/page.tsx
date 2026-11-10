@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-import AuthCard, { buttonClass } from "@/components/AuthCard";
-import { ApiError, completeGoogleSignup } from "@/lib/api";
+import { FormEvent, useEffect, useState } from "react";
+import AuthCard, { buttonClass, inputClass } from "@/components/AuthCard";
+import { ApiError, completeGoogleSignup, getGooglePending } from "@/lib/api";
 
 type SignupRole = "candidate" | "employer" | "interviewer";
 
@@ -29,21 +29,45 @@ const ROLES: {
   },
 ];
 
+function validateName(name: string): string | null {
+  const cleaned = name.trim().replace(/\s+/g, " ");
+  if (!cleaned) return "Full name is required";
+  if (cleaned.length < 2) return "Name must be at least 2 characters";
+  if (cleaned.length > 80) return "Name must be at most 80 characters";
+  if (/[<>]/.test(cleaned)) return "Name contains invalid characters";
+  return null;
+}
+
 export default function SelectRolePage() {
   const router = useRouter();
   const [role, setRole] = useState<SignupRole | null>(null);
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showLoginLink, setShowLoginLink] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Prefill name from Google token
+  useEffect(() => {
+    getGooglePending().then((data) => {
+      if (data.full_name) setFullName(data.full_name);
+    });
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!role) return;
     setError(null);
     setShowLoginLink(false);
+
+    const nameError = validateName(fullName);
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
+
     setLoading(true);
     try {
-      await completeGoogleSignup(role);
+      await completeGoogleSignup(role, fullName.trim().replace(/\s+/g, " "));
       router.replace("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -55,6 +79,8 @@ export default function SelectRolePage() {
         } else if (err.status === 409) {
           setError("An account with this email already exists. Please log in.");
           setShowLoginLink(true);
+        } else if (err.status === 422) {
+          setError("Please enter a valid name (2–80 characters).");
         } else if (err.status === 429) {
           setError("Too many attempts. Please try again in a minute.");
         } else {
@@ -74,6 +100,22 @@ export default function SelectRolePage() {
       subtitle="Choose how you will use Skillio."
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        <div>
+          <label className="mb-1 block text-sm font-medium" htmlFor="full_name">
+            Your name
+          </label>
+          <input
+            id="full_name"
+            type="text"
+            required
+            autoComplete="name"
+            maxLength={80}
+            placeholder="Full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className={inputClass}
+          />
+        </div>
         <div className="space-y-2">
           {ROLES.map((r) => (
             <label

@@ -6,10 +6,16 @@ from app.core.security import hash_password
 from app.models.user import Role, User, UserStatus
 
 
-def _register(client, email: str, password: str = "password1", role: str = "candidate"):
+def _register(
+    client,
+    email: str,
+    password: str = "password1",
+    role: str = "candidate",
+    full_name: str = "Test User",
+):
     return client.post(
         "/auth/register",
-        json={"email": email, "password": password, "role": role},
+        json={"email": email, "password": password, "role": role, "full_name": full_name},
     )
 
 

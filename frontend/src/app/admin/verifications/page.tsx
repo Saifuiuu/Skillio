@@ -185,6 +185,7 @@ export default function AdminVerificationsPage() {
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-border bg-muted text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
+              <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Role</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -197,7 +198,7 @@ export default function AdminVerificationsPage() {
             {loading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-slate-100">
-                  <td className="px-4 py-3" colSpan={6}>
+                  <td className="px-4 py-3" colSpan={7}>
                     <Skeleton className="h-4 w-full" />
                   </td>
                 </tr>
@@ -206,7 +207,7 @@ export default function AdminVerificationsPage() {
             {!loading && items.length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-10 text-center text-muted-foreground"
                 >
                   {tab === "pending"
@@ -219,6 +220,9 @@ export default function AdminVerificationsPage() {
             {!loading &&
               items.map((row) => (
                 <tr key={row.id} className="border-b border-slate-100">
+                  <td className="px-4 py-3 text-foreground font-medium">
+                    {row.full_name || "—"}
+                  </td>
                   <td className="px-4 py-3 text-foreground">{row.email}</td>
                   <td className="px-4 py-3 text-foreground/80">
                     {labelRole(row.role as Role)}

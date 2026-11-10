@@ -16,8 +16,18 @@ const ROLES: { value: SignupRole; label: string; hint: string }[] = [
   { value: "interviewer", label: "Interviewer", hint: "I want to conduct interviews" },
 ];
 
+function validateName(name: string): string | null {
+  const cleaned = name.trim().replace(/\s+/g, " ");
+  if (!cleaned) return "Full name is required";
+  if (cleaned.length < 2) return "Name must be at least 2 characters";
+  if (cleaned.length > 80) return "Name must be at most 80 characters";
+  if (/[<>]/.test(cleaned)) return "Name contains invalid characters";
+  return null;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<SignupRole>("candidate");
@@ -28,13 +38,19 @@ export default function RegisterPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const nameError = validateName(fullName);
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
     if (password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
     }
     setLoading(true);
     try {
-      await register(email, password, role);
+      await register(email, password, role, fullName.trim().replace(/\s+/g, " "));
       await login(email, password);
       setDone(true);
     } catch (err) {
@@ -102,6 +118,22 @@ export default function RegisterPage() {
                 </span>
               </label>
             ))}
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium" htmlFor="full_name">
+              Full name
+            </label>
+            <input
+              id="full_name"
+              type="text"
+              required
+              autoComplete="name"
+              maxLength={80}
+              placeholder="Your full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className={inputClass}
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">Email</label>

@@ -17,11 +17,12 @@ import {
   listMyJobs,
   listResumes,
   resendVerification,
+  updateMe,
   type Job,
   type Resume,
   type User,
 } from "@/lib/api";
-import { displayNameFromEmail, greetingForNow } from "@/lib/nav";
+import { getFirstName, greetingForNow } from "@/lib/nav";
 import { useAuth } from "@/components/AuthProvider";
 
 type DashStats = {
@@ -32,9 +33,13 @@ type DashStats = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [nameDismissed, setNameDismissed] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [stats, setStats] = useState<DashStats>({
     chips: [],
     loading: true,
@@ -139,9 +144,28 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleSaveName(e: React.FormEvent) {
+    e.preventDefault();
+    const cleaned = nameInput.trim().replace(/\s+/g, " ");
+    if (cleaned.length < 2 || cleaned.length > 80 || /[<>]/.test(cleaned)) {
+      setNameError("Please enter a valid name (2–80 characters).");
+      return;
+    }
+    setNameError(null);
+    setNameSaving(true);
+    try {
+      await updateMe({ full_name: cleaned });
+      await refreshUser();
+    } catch {
+      setNameError("Could not update name. Please try again.");
+    } finally {
+      setNameSaving(false);
+    }
+  }
+
   if (authLoading || !user) return <DashboardSkeleton />;
 
-  const first = displayNameFromEmail(user.email);
+  const first = getFirstName(user);
   const greeting = `${greetingForNow()}, ${first}`;
 
   return (
@@ -159,6 +183,40 @@ export default function DashboardPage() {
         {user.role === "interviewer" &&
           "Your interview tools will appear here soon."}
       </p>
+
+      {!user.full_name && !nameDismissed && (
+        <div className="mt-5 rounded-3xl border border-border bg-card p-4 text-foreground shadow-sm">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Add your name to personalise your account</p>
+            <button
+              type="button"
+              onClick={() => setNameDismissed(true)}
+              aria-label="Dismiss banner"
+              className="text-muted-foreground hover:text-foreground cursor-pointer text-sm p-1"
+            >
+              ✕
+            </button>
+          </div>
+          <form onSubmit={handleSaveName} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder="Your full name"
+              maxLength={80}
+              className="flex-1 rounded-xl border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+            />
+            <button
+              type="submit"
+              disabled={nameSaving || !nameInput.trim()}
+              className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-brand-foreground transition-all hover:brightness-95 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+            >
+              {nameSaving ? "Saving..." : "Save"}
+            </button>
+          </form>
+          {nameError && <p className="mt-2 text-xs text-destructive">{nameError}</p>}
+        </div>
+      )}
 
       {!user.email_verified && (
         <div className="mt-5 rounded-3xl border border-sky-300/60 bg-sky-50 p-4 text-sm text-sky-950 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">

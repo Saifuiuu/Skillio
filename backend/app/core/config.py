@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_RESEND_VERIFICATION_PER_MINUTE: int = 3
     RATE_LIMIT_RESET_PASSWORD_PER_MINUTE: int = 5
     RATE_LIMIT_GOOGLE_COMPLETE_PER_MINUTE: int = 5
+    RATE_LIMIT_UPDATE_ME_PER_MINUTE: int = 10
 
     # Resume uploads (local disk under UPLOAD_DIR/resumes/)
     UPLOAD_DIR: str = "uploads"

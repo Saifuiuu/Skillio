@@ -10,10 +10,10 @@ from app.core.security import create_access_token, create_refresh_token, hash_pa
 from app.models.user import Role, User, UserStatus
 
 
-def _register(client, email: str, password: str = "password1", role: str = "candidate"):
+def _register(client, email: str, password: str = "password1", role: str = "candidate", full_name: str = "Test User"):
     return client.post(
         "/auth/register",
-        json={"email": email, "password": password, "role": role},
+        json={"email": email, "password": password, "role": role, "full_name": full_name},
     )
 
 
@@ -43,7 +43,7 @@ def test_register_duplicate_email_409(client):
 def test_register_admin_role_422(client):
     res = client.post(
         "/auth/register",
-        json={"email": "a@example.com", "password": "password1", "role": "admin"},
+        json={"email": "a@example.com", "password": "password1", "role": "admin", "full_name": "Test User"},
     )
     assert res.status_code == 422
 
@@ -51,7 +51,7 @@ def test_register_admin_role_422(client):
 def test_register_password_too_short_422(client):
     res = client.post(
         "/auth/register",
-        json={"email": "s@example.com", "password": "short", "role": "candidate"},
+        json={"email": "s@example.com", "password": "short", "role": "candidate", "full_name": "Test User"},
     )
     assert res.status_code == 422
 
@@ -64,6 +64,7 @@ def test_register_password_over_72_bytes_422(client):
             "email": "long@example.com",
             "password": "x" * 73,
             "role": "candidate",
+            "full_name": "Test User",
         },
     )
     assert res.status_code == 422
@@ -72,7 +73,7 @@ def test_register_password_over_72_bytes_422(client):
 def test_register_invalid_email_422(client):
     res = client.post(
         "/auth/register",
-        json={"email": "not-an-email", "password": "password1", "role": "candidate"},
+        json={"email": "not-an-email", "password": "password1", "role": "candidate", "full_name": "Test User"},
     )
     assert res.status_code == 422
 
@@ -307,3 +308,101 @@ def test_admin_ping_wrong_role_403(client):
 def test_admin_ping_no_cookie_401(client):
     client.cookies.clear()
     assert client.get("/admin/ping").status_code == 401
+
+
+# --- full_name validation ---
+
+
+def test_register_missing_full_name_422(client):
+    res = client.post(
+        "/auth/register",
+        json={"email": "nofullname@example.com", "password": "password1", "role": "candidate"},
+    )
+    assert res.status_code == 422
+
+
+def test_register_empty_full_name_422(client):
+    res = client.post(
+        "/auth/register",
+        json={"email": "empty@example.com", "password": "password1", "role": "candidate", "full_name": ""},
+    )
+    assert res.status_code == 422
+
+
+def test_register_one_char_name_422(client):
+    res = client.post(
+        "/auth/register",
+        json={"email": "one@example.com", "password": "password1", "role": "candidate", "full_name": "A"},
+    )
+    assert res.status_code == 422
+
+
+def test_register_newline_in_name_422(client):
+    res = client.post(
+        "/auth/register",
+        json={"email": "nl@example.com", "password": "password1", "role": "candidate", "full_name": "Bad\nName"},
+    )
+    assert res.status_code == 422
+
+
+def test_register_html_in_name_422(client):
+    res = client.post(
+        "/auth/register",
+        json={"email": "html@example.com", "password": "password1", "role": "candidate", "full_name": "<script>"},
+    )
+    assert res.status_code == 422
+
+
+def test_register_valid_name_saved(client, db_session):
+    res = _register(client, "named@example.com", full_name="Ali Ahmed")
+    assert res.status_code == 201
+    assert res.json()["full_name"] == "Ali Ahmed"
+    user = db_session.scalar(select(User).where(User.email == "named@example.com"))
+    assert user is not None
+    assert user.full_name == "Ali Ahmed"
+
+
+def test_register_unicode_name_accepted(client):
+    res = client.post(
+        "/auth/register",
+        json={"email": "urdu@example.com", "password": "password1", "role": "candidate", "full_name": "علی احمد"},
+    )
+    assert res.status_code == 201
+    assert res.json()["full_name"] == "علی احمد"
+
+
+def test_register_name_whitespace_collapsed(client, db_session):
+    res = client.post(
+        "/auth/register",
+        json={"email": "ws@example.com", "password": "password1", "role": "candidate", "full_name": "  John   Doe  "},
+    )
+    assert res.status_code == 201
+    user = db_session.scalar(select(User).where(User.email == "ws@example.com"))
+    assert user is not None
+    assert user.full_name == "John Doe"
+
+
+# --- PATCH /auth/me ---
+
+
+def test_patch_me_updates_full_name(client, db_session):
+    email = "patch-me@example.com"
+    assert _register(client, email).status_code == 201
+    assert _login(client, email).status_code == 204
+    res = client.patch("/auth/me", json={"full_name": "Updated Name"})
+    assert res.status_code == 200
+    assert res.json()["full_name"] == "Updated Name"
+
+
+def test_patch_me_invalid_name_422(client):
+    email = "patch-invalid@example.com"
+    assert _register(client, email).status_code == 201
+    assert _login(client, email).status_code == 204
+    res = client.patch("/auth/me", json={"full_name": "<bad>"})
+    assert res.status_code == 422
+
+
+def test_patch_me_unauthenticated_401(client):
+    client.cookies.clear()
+    res = client.patch("/auth/me", json={"full_name": "Some Name"})
+    assert res.status_code == 401

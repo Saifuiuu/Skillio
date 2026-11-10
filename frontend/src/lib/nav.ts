@@ -88,3 +88,30 @@ export function greetingForNow(date = new Date()): string {
   if (h < 18) return "Good afternoon";
   return "Good evening";
 }
+
+/** Returns the best display name for a user: full_name if set, else email local-part. */
+export function getDisplayName(user: { full_name: string | null; email: string }): string {
+  if (user.full_name) return user.full_name;
+  const local = user.email.split("@")[0] ?? "there";
+  const part = local.split(/[._-]/)[0] ?? local;
+  return part.charAt(0).toUpperCase() + part.slice(1);
+}
+
+/** Returns the first word of getDisplayName (for greetings). */
+export function getFirstName(user: { full_name: string | null; email: string }): string {
+  return getDisplayName(user).split(/\s+/)[0] ?? getDisplayName(user);
+}
+
+/** Returns up to 2 initials from full_name, or first 2 chars of email local-part. */
+export function getInitials(user: { full_name: string | null; email: string }): string {
+  if (user.full_name) {
+    const parts = user.full_name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return ((parts[0]![0] ?? "") + (parts[parts.length - 1]![0] ?? "")).toUpperCase();
+    }
+    return (parts[0] ?? "").slice(0, 2).toUpperCase() || "??";
+  }
+  const local = user.email.split("@")[0] ?? "??";
+  const letters = local.replace(/[^a-zA-Z0-9]/g, "");
+  return (letters.slice(0, 2) || "??").toUpperCase();
+}
