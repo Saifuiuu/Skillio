@@ -7,11 +7,8 @@ import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApiError,
-  fetchMe,
   getResume,
-  logout as apiLogout,
   type ResumeDetail,
-  type User,
 } from "@/lib/api";
 import {
   extractionBadgeClass,
@@ -19,6 +16,7 @@ import {
   formatResumeDate,
   labelExtraction,
 } from "@/lib/resumes";
+import { useAuth } from "@/components/AuthProvider";
 
 const PREVIEW_CHARS = 2000;
 
@@ -29,26 +27,28 @@ function ResumeDetailSkeleton() {
 function ResumeDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [resume, setResume] = useState<ResumeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "candidate") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
     let cancelled = false;
 
     async function load() {
-      await Promise.resolve();
-      if (cancelled) return;
       try {
-        const me = await fetchMe();
-        if (me.role !== "candidate") {
-          router.replace("/dashboard");
-          return;
-        }
-        if (cancelled) return;
-        setUser(me);
         const data = await getResume(params.id);
         if (!cancelled) setResume(data);
       } catch (err) {
@@ -67,17 +67,9 @@ function ResumeDetailContent() {
     return () => {
       cancelled = true;
     };
-  }, [params.id, router]);
+  }, [user, params.id, router]);
 
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
-    }
-  }
-
-  if (loading || (!user && !notFound)) {
+  if (authLoading || (!user && !notFound)) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-10">
         <Skeleton className="h-8 w-64" />
@@ -87,7 +79,7 @@ function ResumeDetailContent() {
     );
   }
 
-  if (notFound || !resume) {
+  if (notFound || (!loading && !resume)) {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center px-4 py-10">
         <h1 className="text-2xl font-semibold text-foreground">CV not found</h1>
@@ -104,7 +96,7 @@ function ResumeDetailContent() {
     );
   }
 
-  if (!user) return <ResumeDetailSkeleton />;
+  if (loading || !resume) return <ResumeDetailSkeleton />;
 
   const text = resume.extracted_text ?? "";
   const needsTruncate = text.length > PREVIEW_CHARS;
@@ -112,7 +104,7 @@ function ResumeDetailContent() {
     expanded || !needsTruncate ? text : `${text.slice(0, PREVIEW_CHARS)}…`;
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
+    <DashboardShell>
       <Link
         href="/candidate/resumes"
         className="text-sm font-medium text-brand underline"

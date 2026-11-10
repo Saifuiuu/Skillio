@@ -1,20 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import JobForm from "@/components/JobForm";
+import { LinkButton } from "@/components/ui/button";
 import {
   ApiError,
-  fetchMe,
   getJob,
-  logout as apiLogout,
   updateJob,
   type Job,
   type JobWritePayload,
-  type User,
 } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 const FORBIDDEN_MSG =
   "Your account must have a verified email and admin approval before you can post jobs.";
@@ -22,44 +20,41 @@ const FORBIDDEN_MSG =
 function EditJobContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [job, setJob] = useState<Job | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMe()
-      .then(async (me) => {
-        if (me.role !== "employer") {
-          router.replace("/dashboard");
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "employer") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    async function load() {
+      try {
+        const data = await getJob(params.id);
+        if (data.employer_id !== user!.id) {
+          setLoadError("Job not found");
           return;
         }
-        setUser(me);
-        try {
-          const data = await getJob(params.id);
-          if (data.employer_id !== me.id) {
-            setLoadError("Job not found");
-            return;
-          }
-          setJob(data);
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 404) {
-            setLoadError("Job not found");
-          } else {
-            setLoadError("Something went wrong. Please try again.");
-          }
+        setJob(data);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          setLoadError("Job not found");
+        } else {
+          setLoadError("Something went wrong. Please try again.");
         }
-      })
-      .catch(() => router.replace("/login"));
-  }, [router, params.id]);
-
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+      }
     }
-  }
+    void load();
+  }, [user, params.id]);
 
   async function onSubmit(payload: JobWritePayload) {
     setForbidden(null);
@@ -78,15 +73,15 @@ function EditJobContent() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
+    <DashboardShell>
       <div className="mb-6 flex items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold text-foreground">Edit job</h2>
-        <Link href="/employer/jobs" className="text-sm font-medium text-brand underline">
-          Back to My Jobs
-        </Link>
+        <LinkButton href="/employer/jobs" variant="ghost" size="sm">
+          ← Back to My Jobs
+        </LinkButton>
       </div>
 
       {loadError && <p className="text-sm text-destructive">{loadError}</p>}

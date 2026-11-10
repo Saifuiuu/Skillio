@@ -13,13 +13,12 @@ import {
 } from "@/lib/admin";
 import {
   approveUser,
-  fetchMe,
   listAdminUsers,
-  logout as apiLogout,
   updateUserStatus,
   type Role,
   type User,
 } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 const PAGE_SIZE = 20;
 
@@ -61,7 +60,7 @@ async function loadMerged(
 
 export default function AdminVerificationsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<Tab>("pending");
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -70,6 +69,16 @@ export default function AdminVerificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "admin") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const loadUsers = useCallback(async () => {
     setError(null);
@@ -88,26 +97,15 @@ export default function AdminVerificationsPage() {
     }
   }, [page, tab]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        if (me.role !== "admin") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(me);
-        return loadUsers();
-      })
-      .catch(() => router.replace("/login"));
-  }, [router, loadUsers]);
-
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+    if (user?.role === "admin") {
+      let cancelled = false;
+      loadUsers().then(() => { if (cancelled) return; });
+      return () => { cancelled = true; };
     }
-  }
+  }, [user, loadUsers]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function onApprove(target: User) {
     setActingId(target.id);
@@ -146,12 +144,12 @@ export default function AdminVerificationsPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
+    <DashboardShell>
       <h2 className="text-2xl font-semibold text-foreground">Verifications</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Approve or reject employers and interviewers waiting for review.

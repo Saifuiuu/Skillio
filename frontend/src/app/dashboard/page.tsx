@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
@@ -11,19 +10,19 @@ import {
 } from "@/components/ui/SurfaceCard";
 import StatChip from "@/components/ui/StatChip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LinkButton } from "@/components/ui/button";
 import {
-  fetchMe,
   listAdminUsers,
   listJobs,
   listMyJobs,
   listResumes,
-  logout as apiLogout,
   resendVerification,
   type Job,
   type Resume,
   type User,
 } from "@/lib/api";
 import { displayNameFromEmail, greetingForNow } from "@/lib/nav";
+import { useAuth } from "@/components/AuthProvider";
 
 type DashStats = {
   chips: { label: string; value: string | number }[];
@@ -33,7 +32,7 @@ type DashStats = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [stats, setStats] = useState<DashStats>({
@@ -46,10 +45,8 @@ export default function DashboardPage() {
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    fetchMe()
-      .then(setUser)
-      .catch(() => router.replace("/login"));
-  }, [router]);
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -128,14 +125,6 @@ export default function DashboardPage() {
     };
   }, [user]);
 
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
-    }
-  }
-
   async function onResendVerification() {
     if (!user) return;
     setResendMsg(null);
@@ -150,13 +139,13 @@ export default function DashboardPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   const first = displayNameFromEmail(user.email);
   const greeting = `${greetingForNow()}, ${first}`;
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
+    <DashboardShell>
       <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
         {greeting}
       </h2>
@@ -220,12 +209,9 @@ export default function DashboardPage() {
                 title="Your CVs"
                 subtitle="Active resumes on your profile"
                 action={
-                  <Link
-                    href="/candidate/resumes"
-                    className="text-sm font-medium text-brand underline-offset-2 hover:underline"
-                  >
+                  <LinkButton href="/candidate/resumes" variant="ghost" size="sm">
                     Manage
-                  </Link>
+                  </LinkButton>
                 }
               />
               {stats.loading ? (
@@ -249,12 +235,9 @@ export default function DashboardPage() {
                 title="Find jobs"
                 subtitle="Browse open IT roles"
               />
-              <Link
-                href="/jobs"
-                className="inline-flex rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-all duration-150 hover:brightness-95 active:scale-95 cursor-pointer shadow-sm"
-              >
+              <LinkButton href="/jobs" variant="brand">
                 Browse jobs
-              </Link>
+              </LinkButton>
             </SurfaceCard>
             <SurfaceCard variant="feature" className="md:col-span-2">
               <CardHeader
@@ -274,12 +257,9 @@ export default function DashboardPage() {
                 title="Your jobs"
                 subtitle="Latest postings"
                 action={
-                  <Link
-                    href="/employer/jobs"
-                    className="text-sm font-medium text-brand underline-offset-2 hover:underline"
-                  >
+                  <LinkButton href="/employer/jobs" variant="ghost" size="sm">
                     View all
-                  </Link>
+                  </LinkButton>
                 }
               />
               {stats.loading ? (
@@ -303,12 +283,9 @@ export default function DashboardPage() {
                   ))}
                 </ul>
               )}
-              <Link
-                href="/employer/jobs/new"
-                className="mt-4 inline-flex rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-all duration-150 hover:brightness-95 active:scale-95 cursor-pointer shadow-sm"
-              >
+              <LinkButton href="/employer/jobs/new" variant="brand" className="mt-4">
                 Post a job
-              </Link>
+              </LinkButton>
             </SurfaceCard>
             <SurfaceCard variant="feature">
               <CardHeader
@@ -328,12 +305,9 @@ export default function DashboardPage() {
                 title="Pending verifications"
                 subtitle="Employers & interviewers awaiting review"
                 action={
-                  <Link
-                    href="/admin/verifications"
-                    className="text-sm font-medium text-brand underline-offset-2 hover:underline"
-                  >
+                  <LinkButton href="/admin/verifications" variant="ghost" size="sm">
                     Open
-                  </Link>
+                  </LinkButton>
                 }
               />
               {stats.loading ? (
@@ -355,12 +329,9 @@ export default function DashboardPage() {
             </SurfaceCard>
             <SurfaceCard>
               <CardHeader title="Users" subtitle="Browse and manage accounts" />
-              <Link
-                href="/admin/users"
-                className="inline-flex rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-all duration-150 hover:brightness-95 active:scale-95 cursor-pointer shadow-sm"
-              >
+              <LinkButton href="/admin/users" variant="brand">
                 Manage users
-              </Link>
+              </LinkButton>
             </SurfaceCard>
             <SurfaceCard variant="feature" className="md:col-span-2">
               <CardHeader title="Platform" subtitle="Insights across Skillio" />

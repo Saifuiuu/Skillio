@@ -3,9 +3,7 @@
 import { Suspense, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
-import IconRail from "@/components/IconRail";
 import Sidebar from "@/components/Sidebar";
-import TopNav from "@/components/TopNav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -14,25 +12,23 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/components/AuthProvider";
 import type { Role } from "@/lib/api";
 
 type DashboardShellProps = {
-  email: string;
-  role: Role;
+  email?: string;
+  role?: Role;
   name?: string;
   avatarUrl?: string | null;
-  onLogout: () => void;
+  onLogout?: () => void;
   children: ReactNode;
 };
 
 export function DashboardSkeleton() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 pt-4">
-        <Skeleton className="h-14 w-full rounded-full" />
-      </div>
       <div className="mx-auto max-w-6xl space-y-4 px-4 py-8 md:pl-24">
-        <Skeleton className="h-10 w-72" />
+        <Skeleton className="h-10 w-72 rounded-2xl" />
         <div className="flex gap-2">
           <Skeleton className="h-9 w-28 rounded-full" />
           <Skeleton className="h-9 w-28 rounded-full" />
@@ -45,24 +41,26 @@ export function DashboardSkeleton() {
 }
 
 function DashboardShellInner({
-  email,
-  role,
-  name,
-  avatarUrl,
-  onLogout,
+  email: propEmail,
+  role: propRole,
+  name: propName,
+  avatarUrl: propAvatarUrl,
+  onLogout: propOnLogout,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [openPath, setOpenPath] = useState<string | null>(null);
   const mobileOpen = openPath === pathname;
 
-  const user = { email, role, name, avatarUrl };
+  const email = propEmail ?? user?.email ?? "";
+  const role = propRole ?? user?.role ?? "candidate";
+  const name = propName;
+  const avatarUrl = propAvatarUrl;
+  const onLogout = propOnLogout ?? logout;
 
   return (
-    <div className="min-h-screen bg-background">
-      <TopNav user={user} onLogout={onLogout} />
-      <IconRail role={role} onLogout={onLogout} />
-
+    <div>
       <div className="mx-auto max-w-6xl px-4 pt-3 md:hidden">
         <Sheet
           open={mobileOpen}
@@ -99,7 +97,10 @@ function DashboardShellInner({
         </Sheet>
       </div>
 
-      <main key={pathname} className="page-transition mx-auto max-w-6xl px-4 py-6 pb-16 md:pl-24 md:pr-6">
+      <main
+        key={pathname}
+        className="page-transition mx-auto max-w-6xl px-4 py-6 pb-16 md:pl-24 md:pr-6"
+      >
         {children}
       </main>
     </div>

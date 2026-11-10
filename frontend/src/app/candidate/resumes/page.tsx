@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { buttonClass, inputClass } from "@/components/AuthCard";
+import { inputClass } from "@/components/AuthCard";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import Tabs from "@/components/ui/Tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,14 +11,11 @@ import {
   ApiError,
   archiveResume,
   downloadResumeFile,
-  fetchMe,
   listResumes,
-  logout as apiLogout,
   renameResume,
   uploadResume,
   type Resume,
   type ResumeStatus,
-  type User,
 } from "@/lib/api";
 import {
   extractionBadgeClass,
@@ -29,10 +26,11 @@ import {
   resumeUploadErrorMessage,
   validateResumeFile,
 } from "@/lib/resumes";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function CandidateResumesPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<ResumeStatus>("active");
   const [items, setItems] = useState<Resume[]>([]);
   const [activeCount, setActiveCount] = useState(0);
@@ -48,6 +46,16 @@ export default function CandidateResumesPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [actingId, setActingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "candidate") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -66,26 +74,16 @@ export default function CandidateResumesPage() {
     }
   }, [tab]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        if (me.role !== "candidate") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(me);
-        return load();
-      })
-      .catch(() => router.replace("/login"));
-  }, [router, load]);
-
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+    if (user?.role === "candidate") {
+      let cancelled = false;
+      setLoading(true);
+      load().then(() => { if (cancelled) return; });
+      return () => { cancelled = true; };
     }
-  }
+  }, [user, load]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function onUpload(e: FormEvent) {
     e.preventDefault();
@@ -190,12 +188,12 @@ export default function CandidateResumesPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   const atLimit = activeCount >= MAX_ACTIVE_RESUMES;
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
+    <DashboardShell>
       <h2 className="text-2xl font-semibold text-foreground">My CVs</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Upload up to {MAX_ACTIVE_RESUMES} active CVs for different career paths.
@@ -230,7 +228,7 @@ export default function CandidateResumesPage() {
         <button
           type="submit"
           disabled={atLimit || uploading}
-          className={`${buttonClass} w-auto px-4`}
+          className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-brand-foreground transition-all duration-150 hover:brightness-95 active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
         >
           {uploading ? "Uploading…" : "Upload"}
         </button>

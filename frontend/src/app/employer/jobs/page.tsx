@@ -4,24 +4,32 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
-import { buttonClass } from "@/components/AuthCard";
+import { LinkButton } from "@/components/ui/button";
 import {
   closeJob,
-  fetchMe,
   listMyJobs,
-  logout as apiLogout,
   type Job,
-  type User,
 } from "@/lib/api";
 import { formatPostedDate, formatSalary, labelJobStatus } from "@/lib/jobs";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function EmployerJobsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [closingId, setClosingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "employer") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const loadJobs = useCallback(async () => {
     setError(null);
@@ -35,26 +43,15 @@ export default function EmployerJobsPage() {
     }
   }, []);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        if (me.role !== "employer") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(me);
-        return loadJobs();
-      })
-      .catch(() => router.replace("/login"));
-  }, [router, loadJobs]);
-
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+    if (user?.role === "employer") {
+      let cancelled = false;
+      loadJobs().then(() => { if (cancelled) return; });
+      return () => { cancelled = true; };
     }
-  }
+  }, [user, loadJobs]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function onClose(job: Job) {
     if (
@@ -75,15 +72,15 @@ export default function EmployerJobsPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
+    <DashboardShell>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-semibold text-foreground">My Jobs</h2>
-        <Link href="/employer/jobs/new" className={`${buttonClass} w-auto px-4`}>
+        <LinkButton href="/employer/jobs/new" variant="brand">
           New Job
-        </Link>
+        </LinkButton>
       </div>
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}

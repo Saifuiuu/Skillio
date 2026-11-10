@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { inputClass } from "@/components/AuthCard";
 import PublicShell from "@/components/PublicShell";
+import { LinkButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatPostedDate,
@@ -115,9 +116,9 @@ export default function JobsPage() {
               Search IT roles across Pakistan and remote teams.
             </p>
           </div>
-          <Link href="/dashboard" className="text-sm font-medium text-brand underline">
+          <LinkButton href="/dashboard" variant="secondary">
             Dashboard
-          </Link>
+          </LinkButton>
         </div>
 
         <div className="mt-6 grid gap-3 rounded-3xl border border-border bg-card p-4 md:grid-cols-2 lg:grid-cols-3">
