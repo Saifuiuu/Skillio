@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/components/AuthProvider";
+import { getDisplayName } from "@/lib/nav";
 import type { Role } from "@/lib/api";
 
 type DashboardShellProps = {
@@ -55,7 +56,7 @@ function DashboardShellInner({
 
   const email = propEmail ?? user?.email ?? "";
   const role = propRole ?? user?.role ?? "candidate";
-  const name = propName;
+  const name = propName ?? (user ? getDisplayName(user) : undefined);
   const avatarUrl = propAvatarUrl;
   const onLogout = propOnLogout ?? logout;
 

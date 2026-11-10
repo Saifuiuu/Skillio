@@ -1,24 +1,76 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
+import { Menu } from "lucide-react";
+import Sidebar from "@/components/Sidebar";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useAuth } from "@/components/AuthProvider";
+import { getDisplayName } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 function PublicShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const mobileOpen = openPath === pathname;
 
   return (
-    <main
-      key={pathname}
-      className={cn(
-        "page-transition mx-auto max-w-6xl px-4 py-8 md:py-10",
-        user && "md:pl-24 md:pr-6"
+    <div>
+      {user && (
+        <div className="mx-auto max-w-6xl px-4 pt-3 md:hidden">
+          <Sheet
+            open={mobileOpen}
+            onOpenChange={(open) => setOpenPath(open ? pathname : null)}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="rounded-full border-border"
+              aria-label="Open menu"
+              aria-expanded={mobileOpen}
+              onClick={() => setOpenPath(pathname)}
+            >
+              <Menu className="size-5" aria-hidden />
+            </Button>
+            <SheetContent
+              side="left"
+              showCloseButton
+              className="w-72 max-w-[85vw] rounded-r-3xl border-border bg-card p-0"
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
+              <Sidebar
+                email={user.email}
+                role={user.role}
+                name={getDisplayName(user)}
+                avatarUrl={null}
+                onLogout={logout}
+                onNavigate={() => setOpenPath(null)}
+              />
+            </SheetContent>
+          </Sheet>
+        </div>
       )}
-    >
-      {children}
-    </main>
+
+      <main
+        key={pathname}
+        className={cn(
+          "page-transition mx-auto max-w-6xl px-4",
+          user ? "py-6 pb-16 md:pl-24 md:pr-6" : "py-8 md:py-10"
+        )}
+      >
+        {children}
+      </main>
+    </div>
   );
 }
 
