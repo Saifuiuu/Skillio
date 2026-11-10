@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { inputClass } from "@/components/AuthCard";
+import PublicShell from "@/components/PublicShell";
+import { LinkButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatPostedDate,
@@ -104,21 +106,22 @@ export default function JobsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <main className="min-h-screen bg-[#FAFAF9] px-4 py-8">
-      <div className="mx-auto max-w-5xl">
+    <PublicShell>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-[#1E3A5F]">Browse jobs</h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+              Browse jobs
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Search IT roles across Pakistan and remote teams.
             </p>
           </div>
-          <Link href="/dashboard" className="text-sm font-medium text-[#1E3A5F] underline">
+          <LinkButton href="/dashboard" variant="secondary">
             Dashboard
-          </Link>
+          </LinkButton>
         </div>
 
-        <div className="mt-6 grid gap-3 rounded-lg border border-slate-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-6 grid gap-3 rounded-3xl border border-border bg-card p-4 md:grid-cols-2 lg:grid-cols-3">
           <input
             className={inputClass}
             placeholder="Search title or description"
@@ -215,7 +218,7 @@ export default function JobsPage() {
         <div className="mt-6 space-y-3">
           {loading &&
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-lg border border-slate-200 bg-white p-4">
+              <div key={i} className="rounded-3xl border border-border bg-card p-4">
                 <Skeleton className="h-5 w-64" />
                 <Skeleton className="mt-3 h-4 w-40" />
                 <Skeleton className="mt-3 h-4 w-full" />
@@ -223,13 +226,13 @@ export default function JobsPage() {
             ))}
 
           {!loading && error && (
-            <p className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <p className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-destructive">
               {error}
             </p>
           )}
 
           {!loading && !error && items.length === 0 && (
-            <p className="rounded-md border border-slate-200 bg-white p-8 text-center text-sm text-slate-600">
+            <p className="rounded-md border border-border bg-card p-8 text-center text-sm text-muted-foreground">
               No jobs found
             </p>
           )}
@@ -240,18 +243,18 @@ export default function JobsPage() {
               <Link
                 key={job.id}
                 href={`/jobs/${job.id}`}
-                className="block rounded-lg border border-slate-200 bg-white p-4 transition hover:border-[#1E3A5F]"
+                className="card-interactive block rounded-3xl border border-border bg-card p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">{job.title}</h2>
-                    <p className="text-sm text-slate-600">
+                    <h2 className="text-lg font-semibold text-foreground">{job.title}</h2>
+                    <p className="text-sm text-muted-foreground">
                       {job.company_name} · {job.location}
                     </p>
                   </div>
-                  <p className="text-xs text-slate-500">{formatPostedDate(job.created_at)}</p>
+                  <p className="text-xs text-muted-foreground">{formatPostedDate(job.created_at)}</p>
                 </div>
-                <p className="mt-2 text-sm text-slate-700">
+                <p className="mt-2 text-sm text-foreground/80">
                   {labelJobType(job.job_type)} · {labelWorkMode(job.work_mode)} ·{" "}
                   {formatSalary(job)}
                 </p>
@@ -259,7 +262,7 @@ export default function JobsPage() {
                   {job.skills.slice(0, 8).map((skill) => (
                     <span
                       key={skill}
-                      className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-700"
+                      className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground/80"
                     >
                       {skill}
                     </span>
@@ -274,25 +277,24 @@ export default function JobsPage() {
             <button
               type="button"
               disabled={page <= 1}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+              className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
               Previous
             </button>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </p>
             <button
               type="button"
               disabled={page >= totalPages}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+              className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => setPage((p) => p + 1)}
             >
               Next
             </button>
           </div>
         )}
-      </div>
-    </main>
+    </PublicShell>
   );
 }

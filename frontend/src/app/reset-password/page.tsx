@@ -78,13 +78,13 @@ function ResetPasswordForm() {
             minLength={8}
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <button type="submit" disabled={loading} className={buttonClass}>
           {loading ? "Updating..." : "Update password"}
         </button>
       </form>
-      <p className="mt-6 text-center text-sm text-slate-600">
-        <Link href="/login" className="font-medium text-[#1E3A5F] underline">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        <Link href="/login" className="font-medium text-brand underline">
           Back to sign in
         </Link>
       </p>
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+        <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
           Loading...
         </main>
       }

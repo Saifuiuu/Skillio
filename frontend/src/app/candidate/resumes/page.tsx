@@ -3,21 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { buttonClass, inputClass } from "@/components/AuthCard";
+import { inputClass } from "@/components/AuthCard";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
+import Tabs from "@/components/ui/Tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ApiError,
   archiveResume,
   downloadResumeFile,
-  fetchMe,
   listResumes,
-  logout as apiLogout,
   renameResume,
   uploadResume,
   type Resume,
   type ResumeStatus,
-  type User,
 } from "@/lib/api";
 import {
   extractionBadgeClass,
@@ -28,10 +26,11 @@ import {
   resumeUploadErrorMessage,
   validateResumeFile,
 } from "@/lib/resumes";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function CandidateResumesPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<ResumeStatus>("active");
   const [items, setItems] = useState<Resume[]>([]);
   const [activeCount, setActiveCount] = useState(0);
@@ -47,6 +46,16 @@ export default function CandidateResumesPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [actingId, setActingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "candidate") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -65,26 +74,16 @@ export default function CandidateResumesPage() {
     }
   }, [tab]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        if (me.role !== "candidate") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(me);
-        return load();
-      })
-      .catch(() => router.replace("/login"));
-  }, [router, load]);
-
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+    if (user?.role === "candidate") {
+      let cancelled = false;
+      setLoading(true);
+      load().then(() => { if (cancelled) return; });
+      return () => { cancelled = true; };
     }
-  }
+  }, [user, load]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function onUpload(e: FormEvent) {
     e.preventDefault();
@@ -189,22 +188,22 @@ export default function CandidateResumesPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   const atLimit = activeCount >= MAX_ACTIVE_RESUMES;
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
-      <h2 className="text-2xl font-semibold text-slate-900">My CVs</h2>
-      <p className="mt-1 text-sm text-slate-600">
+    <DashboardShell>
+      <h2 className="text-2xl font-semibold text-foreground">My CVs</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
         Upload up to {MAX_ACTIVE_RESUMES} active CVs for different career paths.
       </p>
 
       <form
         onSubmit={onUpload}
-        className="mt-6 space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+        className="mt-6 space-y-3 rounded-3xl border border-border bg-card p-4"
       >
-        <h3 className="text-sm font-semibold text-slate-900">Upload a CV</h3>
+        <h3 className="text-sm font-semibold text-foreground">Upload a CV</h3>
         {atLimit && (
           <p className="text-sm text-amber-800">
             Archive a CV to add a new one.
@@ -223,47 +222,30 @@ export default function CandidateResumesPage() {
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           disabled={atLimit || uploading}
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-md file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5"
+          className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-card file:px-3 file:py-1.5"
         />
-        {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+        {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
         <button
           type="submit"
           disabled={atLimit || uploading}
-          className={`${buttonClass} w-auto px-4`}
+          className="rounded-full bg-brand px-4 py-1.5 text-sm font-medium text-brand-foreground transition-all duration-150 hover:brightness-95 active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
         >
           {uploading ? "Uploading…" : "Upload"}
         </button>
       </form>
 
-      <div className="mt-6 flex gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setTab("active");
+      <div className="mt-6">
+        <Tabs<ResumeStatus>
+          value={tab}
+          onChange={(newTab) => {
+            setTab(newTab);
             setLoading(true);
           }}
-          className={`rounded-md border px-3 py-1.5 text-sm ${
-            tab === "active"
-              ? "border-[#1E3A5F] bg-[#1E3A5F] text-white"
-              : "border-slate-300 bg-white text-slate-700"
-          }`}
-        >
-          Active
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTab("archived");
-            setLoading(true);
-          }}
-          className={`rounded-md border px-3 py-1.5 text-sm ${
-            tab === "archived"
-              ? "border-[#1E3A5F] bg-[#1E3A5F] text-white"
-              : "border-slate-300 bg-white text-slate-700"
-          }`}
-        >
-          Archived
-        </button>
+          items={[
+            { value: "active", label: "Active", count: activeCount },
+            { value: "archived", label: "Archived" },
+          ]}
+        />
       </div>
 
       {message && (
@@ -272,7 +254,7 @@ export default function CandidateResumesPage() {
         </p>
       )}
       {error && (
-        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -280,14 +262,14 @@ export default function CandidateResumesPage() {
       <div className="mt-6 space-y-3">
         {loading &&
           Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-lg border border-slate-200 bg-white p-4">
+            <div key={i} className="rounded-3xl border border-border bg-card p-4">
               <Skeleton className="h-5 w-48" />
               <Skeleton className="mt-3 h-4 w-72" />
             </div>
           ))}
 
         {!loading && items.length === 0 && (
-          <p className="rounded-md border border-slate-200 bg-white p-8 text-center text-sm text-slate-600">
+          <p className="rounded-md border border-border bg-card p-8 text-center text-sm text-muted-foreground">
             {tab === "active"
               ? "No CVs yet. Upload your first CV"
               : "No archived CVs"}
@@ -298,7 +280,7 @@ export default function CandidateResumesPage() {
           items.map((resume) => (
             <div
               key={resume.id}
-              className="rounded-lg border border-slate-200 bg-white p-4"
+              className="rounded-3xl border border-border bg-card p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -314,20 +296,20 @@ export default function CandidateResumesPage() {
                         type="button"
                         disabled={actingId === resume.id}
                         onClick={() => onRename(resume)}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs"
+                        className="rounded-md border border-border px-2.5 py-1 text-xs"
                       >
                         Save
                       </button>
                       <button
                         type="button"
                         onClick={() => setRenamingId(null)}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs"
+                        className="rounded-md border border-border px-2.5 py-1 text-xs"
                       >
                         Cancel
                       </button>
                     </div>
                   ) : (
-                    <h3 className="text-lg font-semibold text-slate-900">
+                    <h3 className="text-lg font-semibold text-foreground">
                       <Link
                         href={`/candidate/resumes/${resume.id}`}
                         className="hover:underline"
@@ -336,7 +318,7 @@ export default function CandidateResumesPage() {
                       </Link>
                     </h3>
                   )}
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {resume.original_filename} · {formatFileSize(resume.file_size_bytes)}{" "}
                     · Uploaded {formatResumeDate(resume.created_at)}
                   </p>
@@ -364,7 +346,7 @@ export default function CandidateResumesPage() {
                       setRenamingId(resume.id);
                       setRenameValue(resume.title);
                     }}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+                    className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer"
                   >
                     Rename
                   </button>
@@ -373,7 +355,7 @@ export default function CandidateResumesPage() {
                   type="button"
                   disabled={actingId === resume.id}
                   onClick={() => onDownload(resume)}
-                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-60"
+                  className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Download
                 </button>
@@ -382,7 +364,7 @@ export default function CandidateResumesPage() {
                     type="button"
                     disabled={actingId === resume.id}
                     onClick={() => onArchive(resume)}
-                    className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-60"
+                    className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Archive
                   </button>

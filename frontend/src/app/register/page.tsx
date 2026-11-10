@@ -50,7 +50,7 @@ export default function RegisterPage() {
         title="Account created"
         subtitle="Check your email to verify your address before continuing."
       >
-        <p className="mb-4 text-sm text-slate-700">
+        <p className="mb-4 text-sm text-foreground/80">
           We sent a verification link to your inbox. You can continue to the
           dashboard now; a reminder will appear until you verify.
         </p>
@@ -69,12 +69,12 @@ export default function RegisterPage() {
     <AuthCard title="Create your account" subtitle="Choose how you want to use Skillio.">
       <div className="space-y-4">
         <GoogleSignInButton label="Continue with Google" />
-        <p className="text-center text-xs text-slate-500">
+        <p className="text-center text-xs text-muted-foreground">
           Google sign-up creates a candidate account. You can change role later.
         </p>
-        <div className="relative py-1 text-center text-xs uppercase tracking-wide text-slate-400">
-          <span className="relative z-10 bg-white px-2">or</span>
-          <span className="absolute inset-x-0 top-1/2 border-t border-slate-200" />
+        <div className="relative py-1 text-center text-xs uppercase tracking-wide text-muted-foreground">
+          <span className="relative z-10 bg-card px-2">or</span>
+          <span className="absolute inset-x-0 top-1/2 border-t border-border" />
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
@@ -82,10 +82,10 @@ export default function RegisterPage() {
             {ROLES.map((r) => (
               <label
                 key={r.value}
-                className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 text-sm ${
+                className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 text-sm transition-all duration-150 ${
                   role === r.value
-                    ? "border-[#1E3A5F] bg-slate-50"
-                    : "border-slate-300"
+                    ? "border-brand bg-brand/5 ring-1 ring-brand"
+                    : "border-border hover:border-foreground/30"
                 }`}
               >
                 <input
@@ -98,7 +98,7 @@ export default function RegisterPage() {
                 />
                 <span>
                   <span className="block font-medium">{r.label}</span>
-                  <span className="text-slate-600">{r.hint}</span>
+                  <span className="text-muted-foreground">{r.hint}</span>
                 </span>
               </label>
             ))}
@@ -123,17 +123,17 @@ export default function RegisterPage() {
               autoComplete="new-password"
               minLength={8}
             />
-            <p className="mt-1 text-xs text-slate-500">At least 8 characters.</p>
+            <p className="mt-1 text-xs text-muted-foreground">At least 8 characters.</p>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <button type="submit" disabled={loading} className={buttonClass}>
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
       </div>
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-[#1E3A5F] underline">
+        <Link href="/login" className="font-medium text-brand underline">
           Sign in
         </Link>
       </p>

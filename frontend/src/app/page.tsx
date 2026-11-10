@@ -1,26 +1,31 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchMe } from "@/lib/api";
+import { LinkButton } from "@/components/ui/button";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function Home() {
   const router = useRouter();
+  const { user, loading } = useAuth();
+
   useEffect(() => {
-    fetchMe()
-      .then(() => router.replace("/dashboard"))
-      .catch(() => router.replace("/login"));
-  }, [router]);
+    if (loading) return;
+    if (user) {
+      router.replace("/dashboard");
+    } else {
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#FAFAF9] px-4">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-4">
       <Skeleton className="h-8 w-28" />
       <Skeleton className="h-4 w-48" />
-      <Link href="/jobs" className="text-sm font-medium text-[#1E3A5F] underline">
+      <LinkButton href="/jobs" variant="ghost" size="sm">
         Browse jobs
-      </Link>
+      </LinkButton>
       <span className="sr-only">Loading</span>
     </main>
   );

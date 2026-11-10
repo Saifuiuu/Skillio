@@ -15,20 +15,19 @@ import {
   statusBadgeClass,
 } from "@/lib/admin";
 import {
-  fetchMe,
   listAdminUsers,
-  logout as apiLogout,
   updateUserStatus,
   type Role,
   type User,
   type UserStatus,
 } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 const PAGE_SIZE = 20;
 
 export default function AdminUsersPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -38,6 +37,16 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "admin") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const loadUsers = useCallback(async () => {
     setError(null);
@@ -59,26 +68,15 @@ export default function AdminUsersPage() {
     }
   }, [page, role, status]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        if (me.role !== "admin") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(me);
-        return loadUsers();
-      })
-      .catch(() => router.replace("/login"));
-  }, [router, loadUsers]);
-
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+    if (user?.role === "admin") {
+      let cancelled = false;
+      loadUsers().then(() => { if (cancelled) return; });
+      return () => { cancelled = true; };
     }
-  }
+  }, [user, loadUsers]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function onToggleStatus(target: User) {
     const next = target.status === "suspended" ? "active" : "suspended";
@@ -110,14 +108,14 @@ export default function AdminUsersPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
-      <h2 className="text-2xl font-semibold text-slate-900">Users</h2>
-      <p className="mt-1 text-sm text-slate-600">
+    <DashboardShell>
+      <h2 className="text-2xl font-semibold text-foreground">Users</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
         View accounts and suspend or activate users.
       </p>
 
@@ -162,14 +160,14 @@ export default function AdminUsersPage() {
         </p>
       )}
       {error && (
-        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-destructive">
           {error}
         </p>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="mt-6 overflow-x-auto rounded-3xl border border-border bg-card">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-border bg-muted text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Role</th>
@@ -193,7 +191,7 @@ export default function AdminUsersPage() {
               <tr>
                 <td
                   colSpan={6}
-                  className="px-4 py-10 text-center text-slate-600"
+                  className="px-4 py-10 text-center text-muted-foreground"
                 >
                   No users found
                 </td>
@@ -210,8 +208,8 @@ export default function AdminUsersPage() {
 
                 return (
                   <tr key={row.id} className="border-b border-slate-100">
-                    <td className="px-4 py-3 text-slate-900">{row.email}</td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-foreground">{row.email}</td>
+                    <td className="px-4 py-3 text-foreground/80">
                       {labelRole(row.role)}
                     </td>
                     <td className="px-4 py-3">
@@ -221,15 +219,15 @@ export default function AdminUsersPage() {
                         {labelUserStatus(row.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-foreground/80">
                       {row.email_verified ? "Yes" : "No"}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-foreground/80">
                       {formatUserDate(row.created_at)}
                     </td>
                     <td className="px-4 py-3">
                       {manageElsewhere && !isSelf && (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-muted-foreground">
                           Manage in Verifications
                         </span>
                       )}
@@ -238,7 +236,7 @@ export default function AdminUsersPage() {
                           type="button"
                           disabled={actingId === row.id}
                           onClick={() => onToggleStatus(row)}
-                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs disabled:opacity-60"
+                          className="rounded-full border border-border px-3 py-1 text-xs font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actingId === row.id ? "…" : "Suspend"}
                         </button>
@@ -248,13 +246,13 @@ export default function AdminUsersPage() {
                           type="button"
                           disabled={actingId === row.id}
                           onClick={() => onToggleStatus(row)}
-                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs disabled:opacity-60"
+                          className="rounded-full border border-border px-3 py-1 text-xs font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actingId === row.id ? "…" : "Activate"}
                         </button>
                       )}
                       {isSelf && (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </td>
                   </tr>
@@ -269,7 +267,7 @@ export default function AdminUsersPage() {
           <button
             type="button"
             disabled={page <= 1}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+            className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => {
               setLoading(true);
               setPage((p) => Math.max(1, p - 1));
@@ -277,13 +275,13 @@ export default function AdminUsersPage() {
           >
             Previous
           </button>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </p>
           <button
             type="button"
             disabled={page >= totalPages}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+            className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => {
               setLoading(true);
               setPage((p) => p + 1);

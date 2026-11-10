@@ -59,9 +59,9 @@ function LoginForm() {
     <AuthCard title="Sign in" subtitle="Welcome back. Enter your details to continue.">
       <div className="space-y-4">
         <GoogleSignInButton />
-        <div className="relative py-1 text-center text-xs uppercase tracking-wide text-slate-400">
-          <span className="relative z-10 bg-white px-2">or</span>
-          <span className="absolute inset-x-0 top-1/2 border-t border-slate-200" />
+        <div className="relative py-1 text-center text-xs uppercase tracking-wide text-muted-foreground">
+          <span className="relative z-10 bg-card px-2">or</span>
+          <span className="absolute inset-x-0 top-1/2 border-t border-border" />
         </div>
 
         <form
@@ -87,7 +87,7 @@ function LoginForm() {
           <div>
             <div className="mb-1 flex items-center justify-between">
               <label className="block text-sm font-medium">Password</label>
-              <Link href="/forgot-password" className="text-xs font-medium text-[#1E3A5F] underline">
+              <Link href="/forgot-password" className="text-xs font-medium text-brand underline">
                 Forgot password?
               </Link>
             </div>
@@ -101,16 +101,16 @@ function LoginForm() {
             />
           </div>
           {(error || oauthError) && (
-            <p className="text-sm text-red-600">{error ?? oauthError}</p>
+            <p className="text-sm text-destructive">{error ?? oauthError}</p>
           )}
           <button type="submit" disabled={loading} className={buttonClass}>
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </div>
-      <p className="mt-6 text-center text-sm text-slate-600">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         New to Skillio?{" "}
-        <Link href="/register" className="font-medium text-[#1E3A5F] underline">
+        <Link href="/register" className="font-medium text-brand underline">
           Create an account
         </Link>
       </p>
@@ -122,7 +122,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center text-sm text-slate-600">
+        <main className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
           Loading...
         </main>
       }

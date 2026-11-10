@@ -1,46 +1,34 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import JobForm from "@/components/JobForm";
+import { LinkButton } from "@/components/ui/button";
 import {
   ApiError,
   createJob,
-  fetchMe,
-  logout as apiLogout,
   type JobWritePayload,
-  type User,
 } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 const FORBIDDEN_MSG =
   "Your account must have a verified email and admin approval before you can post jobs.";
 
 export default function NewJobPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [forbidden, setForbidden] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        if (me.role !== "employer") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(me);
-      })
-      .catch(() => router.replace("/login"));
-  }, [router]);
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
 
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "employer") {
+      router.replace("/dashboard");
     }
-  }
+  }, [user, authLoading, router]);
 
   async function onSubmit(payload: JobWritePayload) {
     setForbidden(null);
@@ -56,15 +44,15 @@ export default function NewJobPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
+    <DashboardShell>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-slate-900">Post a job</h2>
-        <Link href="/employer/jobs" className="text-sm font-medium text-[#1E3A5F] underline">
-          Back to My Jobs
-        </Link>
+        <h2 className="text-2xl font-semibold text-foreground">Post a job</h2>
+        <LinkButton href="/employer/jobs" variant="ghost" size="sm">
+          ← Back to My Jobs
+        </LinkButton>
       </div>
       {forbidden && (
         <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">

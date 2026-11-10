@@ -252,7 +252,7 @@ export default function JobForm({ initial, submitLabel, onSubmit }: JobFormProps
             <button
               key={skill}
               type="button"
-              className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
+              className="rounded-full bg-muted px-3 py-1 text-xs text-foreground/80 transition-all duration-150 hover:bg-destructive/10 hover:text-destructive active:scale-95 cursor-pointer"
               onClick={() =>
                 setForm((prev) => ({
                   ...prev,
@@ -264,9 +264,9 @@ export default function JobForm({ initial, submitLabel, onSubmit }: JobFormProps
             </button>
           ))}
         </div>
-        <p className="mt-1 text-xs text-slate-500">{form.skills.length}/20 skills</p>
+        <p className="mt-1 text-xs text-muted-foreground">{form.skills.length}/20 skills</p>
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <button type="submit" disabled={loading} className={buttonClass}>
         {loading ? "Saving..." : submitLabel}
       </button>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
+import Tabs from "@/components/ui/Tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatUserDate,
@@ -12,13 +13,12 @@ import {
 } from "@/lib/admin";
 import {
   approveUser,
-  fetchMe,
   listAdminUsers,
-  logout as apiLogout,
   updateUserStatus,
   type Role,
   type User,
 } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 const PAGE_SIZE = 20;
 
@@ -60,7 +60,7 @@ async function loadMerged(
 
 export default function AdminVerificationsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<Tab>("pending");
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -69,6 +69,16 @@ export default function AdminVerificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!authLoading && user && user.role !== "admin") {
+      router.replace("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   const loadUsers = useCallback(async () => {
     setError(null);
@@ -87,26 +97,15 @@ export default function AdminVerificationsPage() {
     }
   }, [page, tab]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    fetchMe()
-      .then((me) => {
-        if (me.role !== "admin") {
-          router.replace("/dashboard");
-          return;
-        }
-        setUser(me);
-        return loadUsers();
-      })
-      .catch(() => router.replace("/login"));
-  }, [router, loadUsers]);
-
-  async function logout() {
-    try {
-      await apiLogout();
-    } finally {
-      router.replace("/login?loggedOut=1");
+    if (user?.role === "admin") {
+      let cancelled = false;
+      loadUsers().then(() => { if (cancelled) return; });
+      return () => { cancelled = true; };
     }
-  }
+  }, [user, loadUsers]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function onApprove(target: User) {
     setActingId(target.id);
@@ -145,48 +144,30 @@ export default function AdminVerificationsPage() {
     }
   }
 
-  if (!user) return <DashboardSkeleton />;
+  if (authLoading || !user) return <DashboardSkeleton />;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <DashboardShell email={user.email} role={user.role} onLogout={logout}>
-      <h2 className="text-2xl font-semibold text-slate-900">Verifications</h2>
-      <p className="mt-1 text-sm text-slate-600">
+    <DashboardShell>
+      <h2 className="text-2xl font-semibold text-foreground">Verifications</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
         Approve or reject employers and interviewers waiting for review.
       </p>
 
-      <div className="mt-6 flex gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setTab("pending");
+      <div className="mt-6">
+        <Tabs<Tab>
+          value={tab}
+          onChange={(newTab) => {
+            setTab(newTab);
             setPage(1);
             setLoading(true);
           }}
-          className={`rounded-md border px-3 py-1.5 text-sm ${
-            tab === "pending"
-              ? "border-[#1E3A5F] bg-[#1E3A5F] text-white"
-              : "border-slate-300 bg-white text-slate-700"
-          }`}
-        >
-          Pending
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTab("rejected");
-            setPage(1);
-            setLoading(true);
-          }}
-          className={`rounded-md border px-3 py-1.5 text-sm ${
-            tab === "rejected"
-              ? "border-[#1E3A5F] bg-[#1E3A5F] text-white"
-              : "border-slate-300 bg-white text-slate-700"
-          }`}
-        >
-          Rejected
-        </button>
+          items={[
+            { value: "pending", label: "Pending" },
+            { value: "rejected", label: "Rejected" },
+          ]}
+        />
       </div>
 
       {message && (
@@ -195,14 +176,14 @@ export default function AdminVerificationsPage() {
         </p>
       )}
       {error && (
-        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-destructive">
           {error}
         </p>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="mt-6 overflow-x-auto rounded-3xl border border-border bg-card">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-border bg-muted text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Role</th>
@@ -226,7 +207,7 @@ export default function AdminVerificationsPage() {
               <tr>
                 <td
                   colSpan={6}
-                  className="px-4 py-10 text-center text-slate-600"
+                  className="px-4 py-10 text-center text-muted-foreground"
                 >
                   {tab === "pending"
                     ? "No pending verifications"
@@ -238,8 +219,8 @@ export default function AdminVerificationsPage() {
             {!loading &&
               items.map((row) => (
                 <tr key={row.id} className="border-b border-slate-100">
-                  <td className="px-4 py-3 text-slate-900">{row.email}</td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-foreground">{row.email}</td>
+                  <td className="px-4 py-3 text-foreground/80">
                     {labelRole(row.role as Role)}
                   </td>
                   <td className="px-4 py-3">
@@ -249,7 +230,7 @@ export default function AdminVerificationsPage() {
                       {labelUserStatus(row.status)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-foreground/80">
                     <div>{row.email_verified ? "Yes" : "No"}</div>
                     {!row.email_verified && (
                       <p className="mt-1 text-xs text-amber-700">
@@ -257,7 +238,7 @@ export default function AdminVerificationsPage() {
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-foreground/80">
                     {formatUserDate(row.created_at)}
                   </td>
                   <td className="px-4 py-3">
@@ -266,7 +247,7 @@ export default function AdminVerificationsPage() {
                         type="button"
                         disabled={actingId === row.id}
                         onClick={() => onApprove(row)}
-                        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs disabled:opacity-60"
+                        className="rounded-full border border-border px-3 py-1 text-xs font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {actingId === row.id ? "…" : "Approve"}
                       </button>
@@ -275,7 +256,7 @@ export default function AdminVerificationsPage() {
                           type="button"
                           disabled={actingId === row.id}
                           onClick={() => onReject(row)}
-                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs disabled:opacity-60"
+                          className="rounded-full border border-border px-3 py-1 text-xs font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Reject
                         </button>
@@ -293,7 +274,7 @@ export default function AdminVerificationsPage() {
           <button
             type="button"
             disabled={page <= 1}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+            className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => {
               setLoading(true);
               setPage((p) => Math.max(1, p - 1));
@@ -301,13 +282,13 @@ export default function AdminVerificationsPage() {
           >
             Previous
           </button>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </p>
           <button
             type="button"
             disabled={page >= totalPages}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-50"
+            className="rounded-full border border-border px-3.5 py-1.5 text-sm font-medium transition-all duration-150 hover:bg-muted active:scale-95 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => {
               setLoading(true);
               setPage((p) => p + 1);
