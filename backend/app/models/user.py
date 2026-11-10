@@ -30,6 +30,9 @@ class User(Base):
 
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
 
+    # Optional display name captured at registration / Google sign-up
+    full_name: Mapped[str | None] = mapped_column(String(80), nullable=True, default=None)
+
     # Nullable: Google OAuth wale users ka platform password nahi hota
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

@@ -21,6 +21,7 @@ export type JobSource = "employer_posted" | "admin_added" | "scraped";
 export type User = {
   id: string;
   email: string;
+  full_name: string | null;
   role: Role;
   status: UserStatus;
   email_verified: boolean;
@@ -175,11 +176,12 @@ export async function logout() {
 export async function register(
   email: string,
   password: string,
-  role: "candidate" | "employer" | "interviewer"
+  role: "candidate" | "employer" | "interviewer",
+  full_name: string
 ) {
   await request<User>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, password, role }),
+    body: JSON.stringify({ email, password, role, full_name }),
   });
 }
 
@@ -212,11 +214,27 @@ export async function resendVerification(email: string) {
 }
 
 export async function completeGoogleSignup(
-  role: "candidate" | "employer" | "interviewer"
+  role: "candidate" | "employer" | "interviewer",
+  full_name?: string
 ) {
   return request<User>("/auth/google/complete", {
     method: "POST",
-    body: JSON.stringify({ role }),
+    body: JSON.stringify({ role, full_name: full_name ?? null }),
+  });
+}
+
+export async function getGooglePending(): Promise<{ full_name: string | null }> {
+  try {
+    return await authed<{ full_name: string | null }>("/auth/google/pending");
+  } catch {
+    return { full_name: null };
+  }
+}
+
+export async function updateMe(payload: { full_name: string }): Promise<User> {
+  return authed<User>("/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
 }
 

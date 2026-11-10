@@ -30,11 +30,13 @@ from app.core.email import (
 from app.core.rate_limit import (
     forgot_password_limit,
     google_complete_limit,
+    google_pending_limit,
     limiter,
     login_limit,
     register_limit,
     resend_verification_limit,
     reset_password_limit,
+    update_me_limit,
 )
 from app.core.security import (
     TokenError,
@@ -55,10 +57,12 @@ from app.Dtos.auth import (
     RegisterRequest,
     ResendVerificationRequest,
     ResetPasswordRequest,
+    UpdateMeRequest,
     VerifyEmailRequest,
 )
 from app.Dtos.user import UserOut
 from app.models.user import Role, User, UserStatus
+from app.utils.name_validator import validate_full_name
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +164,7 @@ def register(
         status=user_status,
         auth_provider="local",
         email_verified=False,
+        full_name=data.full_name,
     )
     db.add(user)
     try:
@@ -473,6 +478,14 @@ def google_callback(
         user.email_verified = True
         if user.auth_provider == "local" and user.password_hash is None:
             user.auth_provider = "google"
+    # Backfill full_name from Google if the user has never set one
+    if user.full_name is None:
+        google_name = (info.get("name") or "").strip()
+        if google_name:
+            try:
+                user.full_name = validate_full_name(google_name)
+            except ValueError:
+                pass
     db.commit()
     db.refresh(user)
 
@@ -536,6 +549,22 @@ def google_complete(
     user_status = (
         UserStatus.active if role == Role.candidate else UserStatus.pending_verification
     )
+
+    # Resolve full_name: body-provided name takes priority, then token name
+    resolved_name: str | None = data.full_name  # already validated/cleaned by DTO
+    if resolved_name is None:
+        token_name = (payload.get("name") or "").strip()
+        if token_name:
+            try:
+                resolved_name = validate_full_name(token_name)
+            except ValueError:
+                resolved_name = None
+    if resolved_name is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Please enter your name",
+        )
+
     user = User(
         email=normalized,
         password_hash=None,
@@ -543,6 +572,7 @@ def google_complete(
         status=user_status,
         auth_provider="google",
         email_verified=True,
+        full_name=resolved_name,
     )
     db.add(user)
     try:
@@ -560,3 +590,38 @@ def google_complete(
     # Mirror login: session is issued for active and pending_verification (not suspended).
     _issue_session(response, user)
     return user
+
+
+@router.get("/google/pending")
+@limiter.limit(google_pending_limit)
+def google_pending(request: Request) -> dict:
+    """Return name from the google_signup cookie (for /select-role to prefill).
+
+    Returns {"full_name": str | null}. No email is exposed.
+    Rate-limited to 5/minute.
+    """
+    raw = request.cookies.get(GOOGLE_SIGNUP_COOKIE)
+    if not raw:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No pending Google sign-up")
+    try:
+        payload = decode_token(raw, expected_type="google_signup")
+    except TokenError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired Google sign-up session")
+
+    name = (payload.get("name") or "").strip() or None
+    return {"full_name": name}
+
+
+@router.patch("/me", response_model=UserOut)
+@limiter.limit(update_me_limit)
+def update_me(
+    request: Request,
+    body: UpdateMeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update the logged-in user's full_name."""
+    current_user.full_name = body.full_name  # already validated by DTO
+    db.commit()
+    db.refresh(current_user)
+    return current_user

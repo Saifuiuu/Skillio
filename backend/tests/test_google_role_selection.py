@@ -217,3 +217,105 @@ def test_create_google_signup_token_wrong_type_rejected(client):
     bad = create_access_token(uuid.uuid4(), "candidate", token_version=0)
     client.cookies.set("google_signup", bad)
     assert client.post("/auth/google/complete", json={"role": "candidate"}).status_code == 400
+
+
+def test_google_complete_with_custom_name(client, db_session):
+    email = "custom-name@example.com"
+    resp = _callback_new_google_user(client, email, sub="sub-cust")
+    client.cookies.set("google_signup", resp.cookies.get("google_signup"))
+
+    complete = client.post(
+        "/auth/google/complete",
+        json={"role": "candidate", "full_name": "Overridden Name"},
+    )
+    assert complete.status_code == 201
+    assert complete.json()["full_name"] == "Overridden Name"
+
+    user = db_session.scalar(select(User).where(User.email == email))
+    assert user is not None
+    assert user.full_name == "Overridden Name"
+
+
+def test_google_complete_falls_back_to_token_name(client, db_session):
+    email = "token-name@example.com"
+    resp = _callback_new_google_user(client, email, sub="sub-tok")
+    client.cookies.set("google_signup", resp.cookies.get("google_signup"))
+
+    complete = client.post("/auth/google/complete", json={"role": "candidate"})
+    assert complete.status_code == 201
+    assert complete.json()["full_name"] == "Test User"
+
+
+def test_google_complete_missing_name_422(client):
+    token = create_google_signup_token(
+        google_sub="sub-noname",
+        email="noname@example.com",
+        name="",
+        email_verified=True,
+    )
+    client.cookies.set("google_signup", token)
+
+    res = client.post("/auth/google/complete", json={"role": "candidate"})
+    assert res.status_code == 422
+    assert "Please enter your name" in res.text
+
+
+def test_google_pending_returns_name_only(client):
+    client.cookies.clear()
+    assert client.get("/auth/google/pending").status_code == 400
+
+    token = create_google_signup_token(
+        google_sub="sub-pend",
+        email="secret@example.com",
+        name="Pending User",
+        email_verified=True,
+    )
+    client.cookies.set("google_signup", token)
+    res = client.get("/auth/google/pending")
+    assert res.status_code == 200
+    body = res.json()
+    assert body.get("full_name") == "Pending User"
+    assert "email" not in body
+    assert "secret@example.com" not in res.text
+
+
+def test_existing_google_user_backfills_null_name(client, db_session):
+    email = "backfill@example.com"
+    user = User(
+        email=email,
+        password_hash=None,
+        role=Role.candidate,
+        status=UserStatus.active,
+        auth_provider="google",
+        email_verified=True,
+        full_name=None,
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    resp = _callback_new_google_user(client, email, sub="sub-backfill")
+    assert resp.status_code in (302, 307)
+
+    db_session.refresh(user)
+    assert user.full_name == "Test User"
+
+
+def test_existing_google_user_preserves_existing_name(client, db_session):
+    email = "keepname@example.com"
+    user = User(
+        email=email,
+        password_hash=None,
+        role=Role.candidate,
+        status=UserStatus.active,
+        auth_provider="google",
+        email_verified=True,
+        full_name="Original Name",
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    resp = _callback_new_google_user(client, email, sub="sub-keep")
+    assert resp.status_code in (302, 307)
+
+    db_session.refresh(user)
+    assert user.full_name == "Original Name"

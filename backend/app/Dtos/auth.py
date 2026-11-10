@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.utils.name_validator import validate_full_name
+
 
 class _EmailModel(BaseModel):
     email: EmailStr
@@ -24,11 +26,20 @@ def _validate_password(v: str) -> str:
 class RegisterRequest(_EmailModel):
     password: str = Field(min_length=8, max_length=72)
     role: Literal["candidate", "employer", "interviewer"]
+    full_name: str
 
     @field_validator("password")
     @classmethod
     def fits_bcrypt_limit(cls, v: str) -> str:
         return _validate_password(v)
+
+    @field_validator("full_name")
+    @classmethod
+    def clean_full_name(cls, v: str) -> str:
+        try:
+            return validate_full_name(v)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class LoginRequest(_EmailModel):
@@ -60,6 +71,29 @@ class ResetPasswordRequest(BaseModel):
 
 class GoogleCompleteRequest(BaseModel):
     role: Literal["candidate", "employer", "interviewer"]
+    full_name: str | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def clean_full_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        try:
+            return validate_full_name(v)
+        except ValueError:
+            return None  # caller will fall back to token name
+
+
+class UpdateMeRequest(BaseModel):
+    full_name: str
+
+    @field_validator("full_name")
+    @classmethod
+    def clean_full_name(cls, v: str) -> str:
+        try:
+            return validate_full_name(v)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class RefreshRequest(BaseModel):

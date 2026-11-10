@@ -9,6 +9,7 @@ from app.models.user import Role, UserStatus
 class UserOut(BaseModel):
     id: uuid.UUID
     email: str
+    full_name: str | None = None
     role: Role
     status: UserStatus
     email_verified: bool

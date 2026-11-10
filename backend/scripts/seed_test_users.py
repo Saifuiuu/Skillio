@@ -34,6 +34,7 @@ class DemoUserSpec:
     status: UserStatus
     email_verified: bool
     approved: bool
+    full_name: str
 
 
 DEMO_USERS: tuple[DemoUserSpec, ...] = (
@@ -43,6 +44,7 @@ DEMO_USERS: tuple[DemoUserSpec, ...] = (
         status=UserStatus.active,
         email_verified=True,
         approved=False,
+        full_name="Test Candidate",
     ),
     DemoUserSpec(
         email=f"employer.active@{DEMO_DOMAIN}",
@@ -50,6 +52,7 @@ DEMO_USERS: tuple[DemoUserSpec, ...] = (
         status=UserStatus.active,
         email_verified=True,
         approved=True,
+        full_name="Test Employer Active",
     ),
     DemoUserSpec(
         email=f"employer.pending@{DEMO_DOMAIN}",
@@ -57,6 +60,7 @@ DEMO_USERS: tuple[DemoUserSpec, ...] = (
         status=UserStatus.pending_verification,
         email_verified=True,
         approved=False,
+        full_name="Test Employer Pending",
     ),
     DemoUserSpec(
         email=f"employer.unverified@{DEMO_DOMAIN}",
@@ -64,6 +68,7 @@ DEMO_USERS: tuple[DemoUserSpec, ...] = (
         status=UserStatus.pending_verification,
         email_verified=False,
         approved=False,
+        full_name="Test Employer Unverified",
     ),
     DemoUserSpec(
         email=f"interviewer.pending@{DEMO_DOMAIN}",
@@ -71,6 +76,7 @@ DEMO_USERS: tuple[DemoUserSpec, ...] = (
         status=UserStatus.pending_verification,
         email_verified=True,
         approved=False,
+        full_name="Test Interviewer",
     ),
 )
 
@@ -92,6 +98,7 @@ def _apply_spec(user: User, spec: DemoUserSpec, *, set_password: bool) -> None:
     user.email_verified = spec.email_verified
     user.auth_provider = "local"
     user.approved_at = datetime.now(UTC) if spec.approved else None
+    user.full_name = spec.full_name
     if set_password:
         user.password_hash = hash_password(DEMO_PASSWORD)
 
@@ -116,6 +123,7 @@ def seed_test_users(db: Session, *, reset: bool = False) -> list[tuple[User, str
                 auth_provider="local",
                 email_verified=spec.email_verified,
                 approved_at=datetime.now(UTC) if spec.approved else None,
+                full_name=spec.full_name,
             )
             db.add(user)
             db.commit()
@@ -127,6 +135,10 @@ def seed_test_users(db: Session, *, reset: bool = False) -> list[tuple[User, str
             raise RuntimeError(f"Refusing to modify admin account {spec.email}")
 
         if not reset:
+            # Backfill full_name for existing users who don't have one yet
+            if existing.full_name is None:
+                existing.full_name = spec.full_name
+                db.commit()
             results.append((existing, "skipped"))
             continue
 
@@ -157,6 +169,19 @@ def main(argv: list[str] | None = None) -> int:
     db = SessionLocal()
     try:
         results = seed_test_users(db, reset=args.reset)
+        # Copy all data to plain tuples BEFORE closing the session
+        # (prevents DetachedInstanceError when printing outside session scope)
+        rows: list[tuple[str, str, str, str, str, str]] = [
+            (
+                user.email,
+                user.full_name or "",
+                user.role.value,
+                user.status.value,
+                DEMO_PASSWORD,
+                action,
+            )
+            for user, action in results
+        ]
     except RuntimeError as exc:
         logger.error("%s", exc)
         return 1
@@ -164,12 +189,12 @@ def main(argv: list[str] | None = None) -> int:
         db.close()
 
     print()
-    print(f"{'Email':<40} {'Role':<12} {'Status':<22} {'Password'}")
-    print("-" * 90)
-    for user, action in results:
+    print(f"{'Email':<35} {'Name':<25} {'Role':<12} {'Status':<22} {'Password'}")
+    print("-" * 110)
+    for email, name, role, st, pw, action in rows:
         print(
-            f"{user.email:<40} {user.role.value:<12} {user.status.value:<22} "
-            f"{DEMO_PASSWORD}  ({action})"
+            f"{email:<35} {name:<25} {role:<12} {st:<22} "
+            f"{pw}  ({action})"
         )
     print()
     return 0

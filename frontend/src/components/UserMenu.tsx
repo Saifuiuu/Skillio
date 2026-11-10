@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { LogOut, LayoutDashboard } from "lucide-react";
 import Avatar from "@/components/Avatar";
 import type { Role } from "@/lib/api";
+import { getDisplayName } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 type UserMenuProps = {
@@ -12,6 +13,7 @@ type UserMenuProps = {
     email: string;
     role: Role;
     name?: string;
+    full_name?: string | null;
     avatarUrl?: string | null;
   };
   onLogout?: () => void;
@@ -22,6 +24,10 @@ export default function UserMenu({ user, onLogout, className }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const displayName = getDisplayName({
+    full_name: user.full_name ?? user.name ?? null,
+    email: user.email,
+  });
 
   // Close when clicking outside
   useEffect(() => {
@@ -84,7 +90,7 @@ export default function UserMenu({ user, onLogout, className }: UserMenuProps) {
       >
         <Avatar
           email={user.email}
-          name={user.name}
+          name={user.full_name ?? user.name}
           avatarUrl={user.avatarUrl}
           size={36}
           className="transition-transform duration-150 group-hover:scale-105"
@@ -101,8 +107,9 @@ export default function UserMenu({ user, onLogout, className }: UserMenuProps) {
           {/* User info */}
           <div className="px-3 py-2 border-b border-border/60 mb-1">
             <p className="truncate text-sm font-semibold text-foreground">
-              {user.email}
+              {displayName}
             </p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             <div className="mt-1 flex items-center gap-1.5">
               <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
                 {user.role}
