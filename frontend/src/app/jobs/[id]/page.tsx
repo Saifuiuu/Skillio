@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import PublicShell from "@/components/PublicShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatPostedDate,
@@ -15,11 +16,13 @@ import { ApiError, getJob, type Job } from "@/lib/api";
 
 function JobDetailSkeleton() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <Skeleton className="h-8 w-72" />
-      <Skeleton className="mt-4 h-4 w-48" />
-      <Skeleton className="mt-8 h-40 w-full" />
-    </main>
+    <PublicShell>
+      <div className="mx-auto max-w-3xl space-y-4">
+        <Skeleton className="h-8 w-72" />
+        <Skeleton className="mt-4 h-4 w-48" />
+        <Skeleton className="mt-8 h-40 w-full" />
+      </div>
+    </PublicShell>
   );
 }
 
@@ -62,20 +65,22 @@ function JobDetailContent() {
 
   if (notFound || !job) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center px-4 py-10">
-        <h1 className="text-2xl font-semibold text-foreground">Job not found</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This job may be closed or the link is invalid.
-        </p>
-        <Link href="/jobs" className="mt-6 text-sm font-medium text-brand underline">
-          Back to jobs
-        </Link>
-      </main>
+      <PublicShell>
+        <div className="mx-auto flex max-w-3xl flex-col items-start justify-center py-10">
+          <h1 className="text-2xl font-semibold text-foreground">Job not found</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This job may be closed or the link is invalid.
+          </p>
+          <Link href="/jobs" className="mt-6 text-sm font-medium text-brand underline">
+            Back to jobs
+          </Link>
+        </div>
+      </PublicShell>
     );
   }
 
   return (
-    <main className="page-transition min-h-screen bg-background px-4 py-10">
+    <PublicShell>
       <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card p-6 md:p-8">
         <Link
           href="/jobs"
@@ -129,7 +134,7 @@ function JobDetailContent() {
           </div>
         </section>
       </div>
-    </main>
+    </PublicShell>
   );
 }
 
