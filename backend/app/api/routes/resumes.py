@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -6,6 +7,7 @@ from urllib.parse import quote
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -21,13 +23,16 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.core.config import settings
-from app.core.database import get_db
-from app.core.rate_limit import limiter, resume_upload_limit
+from app.core.database import SessionLocal, get_db
+from app.core.rate_limit import limiter, parse_rate_limit, resume_upload_limit
 from app.core.storage import delete_file, resume_path, save_bytes
 from app.Dtos.resume import ResumeDetailOut, ResumeOut, ResumeTitleUpdate
-from app.models.resume import Resume, ResumeStatus
+from app.models.resume import ExtractionStatus, ParseStatus, Resume, ResumeStatus
 from app.models.user import User, UserStatus
+from app.services.resume_parser import parse_resume_text
 from app.services.resume_text import extract_resume_text
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 
@@ -240,4 +245,62 @@ def archive_resume(
         resume.archived_at = datetime.now(UTC)
         db.commit()
         db.refresh(resume)
+    return resume
+
+
+def _parse_resume_task(resume_id: uuid.UUID) -> None:
+    with SessionLocal() as db:
+        resume = db.get(Resume, resume_id)
+        if not resume or not resume.extracted_text:
+            return
+        try:
+            parsed, provider_name = parse_resume_text(resume.extracted_text)
+            resume.parsed_data = parsed.model_dump()
+            resume.parse_status = ParseStatus.ok
+            resume.parsed_at = datetime.now(UTC)
+            resume.parsed_by = provider_name
+            resume.parse_error = None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("CV parsing failed for resume %s: %s", resume_id, exc)
+            resume.parse_status = ParseStatus.failed
+            resume.parse_error = "CV parsing failed. Please try again later."
+        finally:
+            db.commit()
+
+
+@router.post(
+    "/{resume_id}/parse",
+    response_model=ResumeOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+@limiter.limit(parse_rate_limit)
+def parse_resume(
+    request: Request,
+    resume_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    candidate: User = Depends(require_active_candidate),
+):
+    resume = _owner_resume_or_404(db, resume_id, candidate)
+    if resume.status == ResumeStatus.archived:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume not found")
+
+    if not resume.extracted_text or resume.extraction_status != ExtractionStatus.ok:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "No readable text in this CV",
+        )
+
+    if resume.parse_status == ParseStatus.parsing:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "CV is already being parsed",
+        )
+
+    resume.parse_status = ParseStatus.parsing
+    resume.parse_error = None
+    db.commit()
+    db.refresh(resume)
+
+    background_tasks.add_task(_parse_resume_task, resume.id)
     return resume

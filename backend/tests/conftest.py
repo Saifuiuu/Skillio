@@ -7,7 +7,7 @@ from sqlalchemy.pool import NullPool
 
 import app.models  # noqa: F401
 from app.core.config import settings
-from app.core.database import Base, get_db
+from app.core.database import Base, SessionLocal, get_db
 from app.core.rate_limit import limiter
 from app.main import app as fastapi_app
 
@@ -59,6 +59,7 @@ def test_engine():
     # Recreate so model renames (e.g. email_verified) match the test DB.
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    SessionLocal.configure(bind=engine)
     yield engine
     engine.dispose()
 
