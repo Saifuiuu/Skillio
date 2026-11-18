@@ -98,3 +98,9 @@ class PaginatedApplicationsOut(BaseModel):
     page: int
     page_size: int
 
+
+class PaginatedEmployerApplicationsOut(BaseModel):
+    items: list[ApplicationEmployerOut]
+    total: int
+    page: int
+    page_size: int

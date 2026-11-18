@@ -1,18 +1,24 @@
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_role
+from app.api.deps import get_current_user, require_role
 from app.core.database import get_db
 from app.core.rate_limit import apply_limit, limiter
+from app.core.storage import resume_path
 from app.Dtos.application import (
     ApplicationCreate,
+    ApplicationEmployerOut,
     ApplicationOut,
     PaginatedApplicationsOut,
+    StatusUpdate,
     WithdrawRequest,
 )
 from app.models.application import Application, ApplicationStatus
@@ -27,6 +33,7 @@ _MAX_PAGE_SIZE = 50
 _WITHDRAWABLE = frozenset({ApplicationStatus.applied, ApplicationStatus.shortlisted})
 
 require_candidate = require_role("candidate")
+require_employer = require_role("employer")
 
 
 def require_active_candidate(
@@ -60,6 +67,52 @@ def _application_out(
         created_at=application.created_at,
         updated_at=application.updated_at,
         status_updated_at=application.status_updated_at,
+    )
+
+
+def _employer_application_out(
+    application: Application,
+    candidate: User,
+    resume_title: str,
+) -> ApplicationEmployerOut:
+    return ApplicationEmployerOut(
+        id=application.id,
+        job_id=application.job_id,
+        candidate_id=candidate.id,
+        candidate_full_name=candidate.full_name,
+        candidate_email=candidate.email,
+        resume_id=application.resume_id,
+        resume_title=resume_title,
+        status=application.status,
+        cover_note=application.cover_note,
+        withdraw_reason=application.withdraw_reason,
+        created_at=application.created_at,
+        updated_at=application.updated_at,
+        status_updated_at=application.status_updated_at,
+    )
+
+
+def _application_detail_row(db: Session, application_id: uuid.UUID):
+    return db.execute(
+        select(Application, Job, Resume, User)
+        .join(Job, Job.id == Application.job_id)
+        .join(Resume, Resume.id == Application.resume_id)
+        .join(User, User.id == Application.candidate_id)
+        .where(Application.id == application_id)
+    ).first()
+
+
+def _can_view_application(
+    application: Application,
+    job: Job,
+    current_user: User,
+) -> bool:
+    if current_user.role.value == "candidate":
+        return application.candidate_id == current_user.id
+    return (
+        current_user.role.value == "employer"
+        and current_user.status == UserStatus.active
+        and job.employer_id == current_user.id
     )
 
 
@@ -129,6 +182,83 @@ async def apply_to_job(
     return _application_out(application, job, resume.title)
 
 
+@router.patch(
+    "/{application_id}/status",
+    response_model=ApplicationEmployerOut,
+)
+def update_application_status(
+    application_id: uuid.UUID,
+    data: StatusUpdate,
+    db: Session = Depends(get_db),
+    employer: User = Depends(require_employer),
+):
+    if employer.status != UserStatus.active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Employer account must be active")
+
+    row = _application_detail_row(db, application_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+
+    application, job, resume, candidate = row
+    if job.employer_id != employer.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+
+    target_status = ApplicationStatus(data.status.value)
+    terminal_statuses = {
+        ApplicationStatus.selected,
+        ApplicationStatus.rejected,
+        ApplicationStatus.withdrawn,
+    }
+    if (
+        application.status in terminal_statuses
+        and application.status != target_status
+    ):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Terminal application statuses cannot be changed",
+        )
+
+    if application.status != target_status:
+        application.status = target_status
+        application.status_updated_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(application)
+    return _employer_application_out(application, candidate, resume.title)
+
+
+@router.get("/{application_id}/resume")
+def download_application_resume(
+    application_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    row = _application_detail_row(db, application_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+
+    application, job, resume, _candidate = row
+    if not _can_view_application(application, job, current_user):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+
+    path = resume_path(resume.stored_filename)
+    if not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume file missing")
+
+    filename = Path(resume.original_filename).name
+    ascii_name = "".join(
+        char
+        for char in filename.encode("ascii", "ignore").decode()
+        if char.isprintable() and char not in {'"', "\\"}
+    ) or "resume"
+    encoded = quote(filename, safe="")
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{encoded}'
+        )
+    }
+    return FileResponse(path, media_type=resume.content_type, headers=headers)
+
+
 @router.get("/mine", response_model=PaginatedApplicationsOut)
 def list_my_applications(
     page: int = Query(1, ge=1),
@@ -160,6 +290,28 @@ def list_my_applications(
     return PaginatedApplicationsOut(
         items=items, total=total, page=page, page_size=page_size
     )
+
+
+@router.get(
+    "/{application_id}",
+    response_model=ApplicationOut | ApplicationEmployerOut,
+)
+def get_application(
+    application_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    row = _application_detail_row(db, application_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+
+    application, job, resume, candidate = row
+    if not _can_view_application(application, job, current_user):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Application not found")
+
+    if current_user.role.value == "candidate":
+        return _application_out(application, job, resume.title)
+    return _employer_application_out(application, candidate, resume.title)
 
 
 @router.post("/{application_id}/withdraw", response_model=ApplicationOut)
@@ -195,4 +347,3 @@ def withdraw_application(
     db.commit()
     db.refresh(application)
     return _application_out(application, job, resume_title)
-
