@@ -93,3 +93,7 @@ def resume_upload_limit() -> str:
 def apply_limit() -> str:
     return settings.APPLY_RATE_LIMIT
 
+
+def parse_rate_limit() -> str:
+    return settings.PARSE_RATE_LIMIT
+

@@ -61,6 +61,20 @@ class Settings(BaseSettings):
     # Job applications (used by the application endpoints added in a later part).
     APPLY_RATE_LIMIT: str = "20/hour"
 
+    # LLM & CV Parsing
+    LLM_PROVIDER_CHAIN: str = "ollama"
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5:7b"
+    LLM_TIMEOUT_SECONDS: int = 120
+    LLM_MAX_INPUT_CHARS: int = 12000
+    PARSE_RATE_LIMIT: str = "5/hour"
+
+    # Future fallback providers (optional placeholders)
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str | None = None
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         # utf-8-sig strips a UTF-8 BOM if the editor re-adds one on save

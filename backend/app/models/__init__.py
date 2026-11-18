@@ -7,7 +7,7 @@ from app.models.job import (
     JobType,
     WorkMode,
 )
-from app.models.resume import ExtractionStatus, Resume, ResumeStatus
+from app.models.resume import ExtractionStatus, ParseStatus, Resume, ResumeStatus
 from app.models.user import Role, User, UserStatus
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     "JobSource",
     "JobStatus",
     "JobType",
+    "ParseStatus",
     "Resume",
     "ResumeStatus",
     "Role",
