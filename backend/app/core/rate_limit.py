@@ -88,3 +88,8 @@ def google_pending_limit() -> str:
 
 def resume_upload_limit() -> str:
     return settings.RESUME_UPLOAD_RATE_LIMIT
+
+
+def apply_limit() -> str:
+    return settings.APPLY_RATE_LIMIT
+
