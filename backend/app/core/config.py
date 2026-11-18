@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     MAX_ACTIVE_RESUMES: int = 3
     RESUME_UPLOAD_RATE_LIMIT: str = "10/hour"
 
+    # Job applications (used by the application endpoints added in a later part).
+    APPLY_RATE_LIMIT: str = "20/hour"
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         # utf-8-sig strips a UTF-8 BOM if the editor re-adds one on save

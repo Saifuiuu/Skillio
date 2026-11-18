@@ -11,9 +11,15 @@ from app.api.deps import (
     require_employer,
 )
 from app.core.database import get_db
+from app.Dtos.application import (
+    ApplicationEmployerOut,
+    PaginatedEmployerApplicationsOut,
+)
 from app.Dtos.job import JobCreate, JobOut, JobUpdate, PaginatedJobsOut
+from app.models.application import Application, ApplicationStatus
 from app.models.job import Job, JobCategory, JobSource, JobStatus, JobType, WorkMode
-from app.models.user import User
+from app.models.resume import Resume
+from app.models.user import User, UserStatus
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -92,6 +98,63 @@ def list_my_jobs(
     ).all()
     return PaginatedJobsOut(
         items=list(items), total=total, page=page, page_size=page_size
+    )
+
+
+@router.get(
+    "/{job_id}/applications",
+    response_model=PaginatedEmployerApplicationsOut,
+)
+def list_job_applications(
+    job_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=_MAX_PAGE_SIZE),
+    status_filter: ApplicationStatus | None = Query(None, alias="status"),
+    db: Session = Depends(get_db),
+    employer: User = Depends(require_employer),
+):
+    if employer.status != UserStatus.active:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Employer account must be active")
+
+    job = db.get(Job, job_id)
+    if job is None or job.employer_id != employer.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+
+    filters = [Application.job_id == job.id]
+    if status_filter is not None:
+        filters.append(Application.status == status_filter)
+    total = (
+        db.scalar(select(func.count()).select_from(Application).where(*filters)) or 0
+    )
+    rows = db.execute(
+        select(Application, User, Resume.title)
+        .join(User, User.id == Application.candidate_id)
+        .join(Resume, Resume.id == Application.resume_id)
+        .where(*filters)
+        .order_by(Application.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    items = [
+        ApplicationEmployerOut(
+            id=application.id,
+            job_id=application.job_id,
+            candidate_id=candidate.id,
+            candidate_full_name=candidate.full_name,
+            candidate_email=candidate.email,
+            resume_id=application.resume_id,
+            resume_title=resume_title,
+            status=application.status,
+            cover_note=application.cover_note,
+            withdraw_reason=application.withdraw_reason,
+            created_at=application.created_at,
+            updated_at=application.updated_at,
+            status_updated_at=application.status_updated_at,
+        )
+        for application, candidate, resume_title in rows
+    ]
+    return PaginatedEmployerApplicationsOut(
+        items=items, total=total, page=page, page_size=page_size
     )
 
 

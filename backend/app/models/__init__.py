@@ -1,3 +1,4 @@
+from app.models.application import Application, ApplicationStatus
 from app.models.job import (
     Job,
     JobCategory,
@@ -10,6 +11,8 @@ from app.models.resume import ExtractionStatus, Resume, ResumeStatus
 from app.models.user import Role, User, UserStatus
 
 __all__ = [
+    "Application",
+    "ApplicationStatus",
     "ExtractionStatus",
     "Job",
     "JobCategory",
