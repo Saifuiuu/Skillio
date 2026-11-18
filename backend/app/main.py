@@ -4,7 +4,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.routes import admin, auth, jobs, resumes
+from app.api.routes import admin, applications, auth, jobs, resumes
 from app.core.database import get_db
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 
@@ -24,6 +24,7 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(jobs.router)
 app.include_router(resumes.router)
+app.include_router(applications.router)
 
 @app.get("/")
 def root():

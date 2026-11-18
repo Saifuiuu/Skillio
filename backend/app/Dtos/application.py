@@ -5,7 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.application import ApplicationStatus
-from app.models.job import JobType, WorkMode
+from app.models.job import JobStatus, JobType, WorkMode
 
 
 def _clean_optional_text(value: str | None) -> str | None:
@@ -59,6 +59,7 @@ class ApplicationOut(BaseModel):
     location: str
     job_type: JobType
     work_mode: WorkMode
+    job_status: JobStatus
     resume_id: uuid.UUID
     resume_title: str
     status: ApplicationStatus
@@ -89,3 +90,11 @@ class ApplicationEmployerOut(BaseModel):
     status_updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedApplicationsOut(BaseModel):
+    items: list[ApplicationOut]
+    total: int
+    page: int
+    page_size: int
+
