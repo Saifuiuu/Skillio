@@ -11,6 +11,7 @@ import {
   type JobWritePayload,
 } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
 
 const FORBIDDEN_MSG =
   "Your account must have a verified email and admin approval before you can post jobs.";
@@ -18,6 +19,7 @@ const FORBIDDEN_MSG =
 export default function NewJobPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [forbidden, setForbidden] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function NewJobPage() {
     setForbidden(null);
     try {
       await createJob(payload);
+      toast.success("Job posted successfully");
       router.push("/employer/jobs");
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {

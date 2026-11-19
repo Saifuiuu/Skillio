@@ -21,25 +21,18 @@ export default function ThemeToggle({
     () => false
   );
 
-  if (!mounted) {
-    return (
-      <div
-        className={cn(
-          "relative inline-flex size-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-full",
-          className
-        )}
-        aria-hidden="true"
-      />
-    );
-  }
-
-  const dark = theme === "dark";
+  const dark = mounted ? theme === "dark" : false;
+  const label = mounted
+    ? dark
+      ? "Switch to light theme"
+      : "Switch to dark theme"
+    : "Toggle color theme";
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
+      aria-label={label}
       className={cn(
         "relative inline-flex size-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-full transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none",
         variant === "rail"
@@ -52,18 +45,22 @@ export default function ThemeToggle({
         <Sun
           className={cn(
             "absolute size-4 transition-all duration-200 ease-out",
-            dark
+            mounted && dark
               ? "rotate-0 scale-100 opacity-100"
-              : "-rotate-90 scale-0 opacity-0"
+              : mounted && !dark
+              ? "-rotate-90 scale-0 opacity-0"
+              : "rotate-0 scale-100 opacity-70"
           )}
           aria-hidden
         />
         <Moon
           className={cn(
             "absolute size-4 transition-all duration-200 ease-out",
-            dark
+            mounted && dark
               ? "rotate-90 scale-0 opacity-0"
-              : "rotate-0 scale-100 opacity-100"
+              : mounted && !dark
+              ? "rotate-0 scale-100 opacity-100"
+              : "rotate-0 scale-0 opacity-0"
           )}
           aria-hidden
         />

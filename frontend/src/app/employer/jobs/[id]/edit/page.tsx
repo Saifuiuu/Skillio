@@ -13,6 +13,7 @@ import {
   type JobWritePayload,
 } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
 
 const FORBIDDEN_MSG =
   "Your account must have a verified email and admin approval before you can post jobs.";
@@ -21,6 +22,7 @@ function EditJobContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [job, setJob] = useState<Job | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState<string | null>(null);
@@ -60,6 +62,7 @@ function EditJobContent() {
     setForbidden(null);
     try {
       await updateJob(params.id, payload);
+      toast.success("Job updated successfully");
       router.push("/employer/jobs");
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {

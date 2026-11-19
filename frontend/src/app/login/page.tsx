@@ -6,6 +6,7 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import AuthCard, { buttonClass, inputClass } from "@/components/AuthCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import PasswordInput from "@/components/PasswordInput";
+import { useToast } from "@/components/ToastProvider";
 import { login } from "@/lib/api";
 
 const GOOGLE_ERRORS: Record<string, string> = {
@@ -20,6 +21,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const loggedOut = Boolean(searchParams.get("loggedOut"));
 
   // Remount a fresh empty form after logout (avoids setState-in-effect lint + autofill).
@@ -38,8 +40,9 @@ function LoginForm() {
   // Strip ?loggedOut=1 without touching form state (form already mounted empty).
   useEffect(() => {
     if (!loggedOut) return;
+    toast.info("Logged out");
     router.replace("/login", { scroll: false });
-  }, [loggedOut, router]);
+  }, [loggedOut, router, toast]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -47,6 +50,7 @@ function LoginForm() {
     setLoading(true);
     try {
       await login(email, password);
+      toast.success("Signed in successfully");
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

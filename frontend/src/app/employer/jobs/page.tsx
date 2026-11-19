@@ -12,10 +12,14 @@ import {
 } from "@/lib/api";
 import { formatPostedDate, formatSalary, labelJobStatus } from "@/lib/jobs";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
+import { EmployerJobsSkeleton } from "@/components/PageSkeletons";
+import { Briefcase } from "lucide-react";
 
 export default function EmployerJobsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +68,11 @@ export default function EmployerJobsPage() {
     setClosingId(job.id);
     try {
       await closeJob(job.id);
+      toast.info("Job marked as filled");
       await loadJobs();
     } catch {
       setError("Could not close this job. Please try again.");
+      toast.error("Could not close this job");
     } finally {
       setClosingId(null);
     }
@@ -85,12 +91,28 @@ export default function EmployerJobsPage() {
 
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
-      {loading ? (
-        <p className="mt-6 text-sm text-muted-foreground">Loading jobs…</p>
+      {loading && jobs.length === 0 ? (
+        <div className="mt-6">
+          <EmployerJobsSkeleton />
+        </div>
       ) : jobs.length === 0 ? (
-        <p className="mt-6 rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
-          You have not posted any jobs yet.
-        </p>
+        <div className="mt-6 rounded-3xl border border-border bg-card p-10 text-center space-y-3">
+          <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <Briefcase className="size-5" />
+          </div>
+          <h3 className="text-base font-semibold text-foreground">No posted jobs yet</h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            Create your first technical role to start receiving candidate applications.
+          </p>
+          <LinkButton
+            href="/employer/jobs/new"
+            variant="brand"
+            size="sm"
+            className="rounded-full shadow-sm"
+          >
+            Post a job
+          </LinkButton>
+        </div>
       ) : (
         <ul className="mt-6 space-y-3">
           {jobs.map((job) => (

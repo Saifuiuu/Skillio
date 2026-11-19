@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { inputClass } from "@/components/AuthCard";
 import PublicShell from "@/components/PublicShell";
-import { LinkButton } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2, Search } from "lucide-react";
 import {
   formatPostedDate,
   formatSalary,
@@ -216,29 +217,71 @@ export default function JobsPage() {
         </div>
 
         <div className="mt-6 space-y-3">
-          {loading &&
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-3xl border border-border bg-card p-4">
-                <Skeleton className="h-5 w-64" />
-                <Skeleton className="mt-3 h-4 w-40" />
-                <Skeleton className="mt-3 h-4 w-full" />
-              </div>
-            ))}
+          {loading && items.length === 0 && (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-3xl border border-border bg-card p-5 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-56" />
+                      <Skeleton className="h-4 w-36" />
+                    </div>
+                    <Skeleton className="h-7 w-20 rounded-full" />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {loading && items.length > 0 && (
+            <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin text-brand" />
+              <span>Updating results…</span>
+            </div>
+          )}
 
           {!loading && error && (
-            <p className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-destructive">
+            <p className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
               {error}
             </p>
           )}
 
           {!loading && !error && items.length === 0 && (
-            <p className="rounded-md border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              No jobs found
-            </p>
+            <div className="rounded-3xl border border-border bg-card p-10 text-center space-y-3">
+              <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <Search className="size-5" />
+              </div>
+              <h3 className="text-base font-semibold text-foreground">No open roles found</h3>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                Try clearing your search terms or relaxing category filters.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setQ("");
+                  setLocation("");
+                  setCategory("");
+                  setJobType("");
+                  setWorkMode("");
+                  setSkills("");
+                  setExperience("");
+                  setSalaryMin("");
+                }}
+                className="rounded-full"
+              >
+                Clear all filters
+              </Button>
+            </div>
           )}
 
-          {!loading &&
-            !error &&
+          {!error &&
+            items.length > 0 &&
             items.map((job) => (
               <Link
                 key={job.id}

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
 import {
   ApiError,
   getResume,
@@ -57,6 +58,7 @@ function ResumeDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   const [resume, setResume] = useState<ResumeDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,6 +133,11 @@ function ResumeDetailContent() {
         setResume(updated);
         if (updated.parse_status !== "parsing") {
           clearInterval(timer);
+          if (updated.parse_status === "ok") {
+            toast.success("CV analysis finished");
+          } else if (updated.parse_status === "failed") {
+            toast.error("CV analysis failed. Please try again.");
+          }
         }
       } catch {
         // network glitch on poll tick: keep polling until maxAttempts
@@ -141,7 +148,7 @@ function ResumeDetailContent() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [isParsing, resume?.id]);
+  }, [isParsing, resume?.id, toast]);
 
   async function handleStartParsing() {
     if (!resume) return;
@@ -154,6 +161,7 @@ function ResumeDetailContent() {
       setResume((prev) =>
         prev ? { ...prev, parse_status: "parsing", parse_error: null } : prev
       );
+      toast.info("CV analysis started");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
@@ -166,18 +174,26 @@ function ResumeDetailContent() {
             return;
           }
           if (detail.includes("readable") || detail.includes("text")) {
-            setParseActionError("No readable text in this CV");
+            const msg = "No readable text in this CV";
+            setParseActionError(msg);
+            toast.error(msg);
             return;
           }
-          setParseActionError("CV cannot be analyzed right now.");
+          const msg = "CV cannot be analyzed right now.";
+          setParseActionError(msg);
+          toast.error(msg);
           return;
         }
         if (err.status === 429) {
-          setParseActionError("Too many attempts. Try again later.");
+          const msg = "Too many attempts. Try again later.";
+          setParseActionError(msg);
+          toast.error(msg);
           return;
         }
       }
-      setParseActionError("Could not start CV analysis. Please try again later.");
+      const genericMsg = "Could not start CV analysis. Please try again later.";
+      setParseActionError(genericMsg);
+      toast.error(genericMsg);
     } finally {
       setIsSubmitting(false);
     }

@@ -29,10 +29,13 @@ import {
   validateResumeFile,
 } from "@/lib/resumes";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
+import { FileText } from "lucide-react";
 
 export default function CandidateResumesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [tab, setTab] = useState<ResumeStatus>("active");
   const [items, setItems] = useState<Resume[]>([]);
   const [activeCount, setActiveCount] = useState(0);
@@ -146,6 +149,7 @@ export default function CandidateResumesPage() {
       setTitle("");
       setFile(null);
       setMessage("CV uploaded.");
+      toast.success("CV uploaded successfully");
       setTab("active");
       setLoading(true);
       setError(null);
@@ -153,7 +157,9 @@ export default function CandidateResumesPage() {
       setItems(list);
       setActiveCount(list.length);
     } catch (err) {
-      setUploadError(resumeUploadErrorMessage(err));
+      const msg = resumeUploadErrorMessage(err);
+      setUploadError(msg);
+      toast.error(msg);
     } finally {
       setUploading(false);
       setLoading(false);
@@ -173,9 +179,11 @@ export default function CandidateResumesPage() {
       await renameResume(resume.id, next);
       setRenamingId(null);
       setMessage("Title updated.");
+      toast.success("CV renamed");
       await load();
     } catch {
       setError("Something went wrong. Please try again.");
+      toast.error("Could not rename CV");
     } finally {
       setActingId(null);
     }
@@ -195,10 +203,12 @@ export default function CandidateResumesPage() {
     try {
       await archiveResume(resume.id);
       setMessage(`"${resume.title}" archived.`);
+      toast.info(`"${resume.title}" moved to archive`);
       setLoading(true);
       await load();
     } catch {
       setError("Something went wrong. Please try again.");
+      toast.error("Could not archive CV");
     } finally {
       setActingId(null);
     }
@@ -301,11 +311,19 @@ export default function CandidateResumesPage() {
           ))}
 
         {!loading && items.length === 0 && (
-          <p className="rounded-md border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-            {tab === "active"
-              ? "No CVs yet. Upload your first CV"
-              : "No archived CVs"}
-          </p>
+          <div className="rounded-3xl border border-border bg-card p-10 text-center space-y-3">
+            <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <FileText className="size-5" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">
+              {tab === "active" ? "No active CVs" : "No archived CVs"}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              {tab === "active"
+                ? "Upload your technical CV in PDF or DOCX format to enable AI parsing and direct job applications."
+                : "CVs you archive will appear here."}
+            </p>
+          </div>
         )}
 
         {!loading &&
