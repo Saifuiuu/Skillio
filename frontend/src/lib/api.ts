@@ -325,6 +325,71 @@ export function approveUser(userId: string) {
 export type ExtractionStatus = "ok" | "empty" | "failed";
 export type ResumeStatus = "active" | "archived";
 
+export type ApplicationStatus =
+  | "applied"
+  | "under_review"
+  | "shortlisted"
+  | "interview"
+  | "selected"
+  | "rejected"
+  | "withdrawn";
+
+export type EmployerApplicationStatus =
+  | "under_review"
+  | "shortlisted"
+  | "interview"
+  | "selected"
+  | "rejected";
+
+export type Application = {
+  id: string;
+  job_id: string;
+  job_title: string;
+  company_name: string;
+  location: string;
+  job_type: JobType;
+  work_mode: WorkMode;
+  job_status: JobStatus;
+  resume_id: string;
+  resume_title: string;
+  status: ApplicationStatus;
+  cover_note: string | null;
+  withdraw_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  status_updated_at: string;
+};
+
+export type ApplicationEmployer = {
+  id: string;
+  job_id: string;
+  candidate_id: string;
+  candidate_full_name: string | null;
+  candidate_email: string;
+  resume_id: string;
+  resume_title: string;
+  status: ApplicationStatus;
+  cover_note: string | null;
+  withdraw_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  status_updated_at: string;
+};
+
+export type PaginatedApplications = {
+  items: Application[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
+export type PaginatedEmployerApplications = {
+  items: ApplicationEmployer[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
 export type Resume = {
   id: string;
   title: string;
@@ -385,6 +450,82 @@ async function fetchAuthedBlob(path: string): Promise<Response> {
 
 export async function downloadResumeFile(id: string, fallbackName: string) {
   const res = await fetchAuthedBlob(`/resumes/${id}/file`);
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  const plainMatch = /filename="([^"]+)"/i.exec(disposition);
+  const filename = utfMatch
+    ? decodeURIComponent(utfMatch[1])
+    : plainMatch?.[1] ?? fallbackName;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function applyToJob(payload: {
+  job_id: string;
+  resume_id: string;
+  cover_note?: string | null;
+}) {
+  return authed<Application>("/applications", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listMyApplications(
+  params: {
+    page?: number;
+    page_size?: number;
+    status?: ApplicationStatus;
+  } = {}
+) {
+  return authed<PaginatedApplications>(
+    `/applications/mine${toQuery(params as Record<string, string | number | undefined | null>)}`
+  );
+}
+
+export function withdrawApplication(id: string, reason?: string | null) {
+  return authed<Application>(`/applications/${id}/withdraw`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason?.trim() || null }),
+  });
+}
+
+export function listJobApplications(
+  jobId: string,
+  params: {
+    page?: number;
+    page_size?: number;
+    status?: ApplicationStatus;
+  } = {}
+) {
+  return authed<PaginatedEmployerApplications>(
+    `/jobs/${jobId}/applications${toQuery(params as Record<string, string | number | undefined | null>)}`
+  );
+}
+
+export function updateApplicationStatus(
+  applicationId: string,
+  status: EmployerApplicationStatus
+) {
+  return authed<ApplicationEmployer>(`/applications/${applicationId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function downloadApplicationResume(
+  applicationId: string,
+  fallbackName = "resume.pdf"
+) {
+  const res = await fetchAuthedBlob(`/applications/${applicationId}/resume`);
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
   const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(disposition);

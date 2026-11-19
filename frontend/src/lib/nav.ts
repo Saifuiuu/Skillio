@@ -28,9 +28,9 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { href: "/jobs", label: "Browse jobs", enabled: true, icon: Search },
     { href: "/candidate/resumes", label: "My CVs", enabled: true, icon: FileText },
     {
-      href: "/applications",
-      label: "Applications",
-      enabled: false,
+      href: "/candidate/applications",
+      label: "My Applications",
+      enabled: true,
       icon: ClipboardList,
     },
     { href: "/profile", label: "Profile", enabled: false, icon: UserCircle2 },
