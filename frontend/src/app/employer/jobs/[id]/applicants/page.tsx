@@ -15,6 +15,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
+import { EmployerApplicantsSkeleton } from "@/components/PageSkeletons";
 import {
   ApiError,
   downloadApplicationResume,
@@ -61,6 +63,7 @@ function ApplicantsContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   const [job, setJob] = useState<Job | null>(null);
   const [jobNotFound, setJobNotFound] = useState(false);
@@ -164,7 +167,7 @@ function ApplicantsContent() {
       const fallback = `${app.candidate_full_name || "candidate"}-cv.pdf`;
       await downloadApplicationResume(app.id, fallback);
     } catch {
-      alert("Failed to download CV file. Please try again.");
+      toast.error("Failed to download CV file. Please try again.");
     } finally {
       setDownloadingId(null);
     }
@@ -179,12 +182,15 @@ function ApplicantsContent() {
     try {
       await updateApplicationStatus(applicationId, nextStatus);
       setConfirmTarget(null);
+      toast.success(`Status updated to ${labelApplicationStatus(nextStatus)}`);
       await loadApplicants();
     } catch (err) {
       if (err instanceof ApiError) {
         setStatusError(err.message || "Failed to update status.");
+        toast.error(err.message || "Failed to update status");
       } else {
         setStatusError("Failed to update status.");
+        toast.error("Failed to update status");
       }
     } finally {
       setUpdatingId(null);
@@ -546,7 +552,7 @@ function ApplicantsContent() {
 
 export default function EmployerJobApplicantsPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <Suspense fallback={<EmployerApplicantsSkeleton />}>
       <ApplicantsContent />
     </Suspense>
   );

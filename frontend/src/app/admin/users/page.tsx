@@ -22,12 +22,14 @@ import {
   type UserStatus,
 } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
 
 const PAGE_SIZE = 20;
 
 export default function AdminUsersPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -95,14 +97,16 @@ export default function AdminUsersPage() {
     setError(null);
     try {
       await updateUserStatus(target.id, next);
-      setMessage(
+      const msg =
         next === "suspended"
           ? `${target.email} has been suspended.`
-          : `${target.email} has been activated.`
-      );
+          : `${target.email} has been activated.`;
+      setMessage(msg);
+      toast.success(msg);
       await loadUsers();
     } catch {
       setError("Could not update user status. Please try again.");
+      toast.error("Could not update user status");
     } finally {
       setActingId(null);
     }
@@ -181,7 +185,7 @@ export default function AdminUsersPage() {
           <tbody>
             {loading &&
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-slate-100">
+                <tr key={i} className="border-b border-border">
                   <td className="px-4 py-3" colSpan={7}>
                     <Skeleton className="h-4 w-full" />
                   </td>
@@ -208,7 +212,7 @@ export default function AdminUsersPage() {
                   !isSelf && !manageElsewhere && row.status === "suspended";
 
                 return (
-                  <tr key={row.id} className="border-b border-slate-100">
+                  <tr key={row.id} className="border-b border-border">
                     <td className="px-4 py-3 text-foreground font-medium">
                       {row.full_name || "—"}
                     </td>

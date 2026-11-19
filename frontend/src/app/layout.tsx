@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Urbanist } from "next/font/google";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { ToastProvider } from "@/components/ToastProvider";
+import RouteProgressBar from "@/components/RouteProgressBar";
 import AppShell from "@/components/AppShell";
 import "./globals.css";
 
@@ -18,8 +20,17 @@ const urbanist = Urbanist({
 });
 
 export const metadata: Metadata = {
-  title: "Skillio",
-  description: "AI-powered recruitment platform",
+  title: "Skillio | Technical Hiring & IT Jobs",
+  description:
+    "Discover verified IT roles, analyze and refine your technical CV with AI, and track hiring applications in one focused platform.",
+  openGraph: {
+    title: "Skillio | Technical Hiring & IT Jobs",
+    description:
+      "Discover verified IT roles, analyze and refine your technical CV with AI, and track hiring applications in one focused platform.",
+    type: "website",
+    locale: "en_US",
+    siteName: "Skillio",
+  },
   icons: {
     icon: "/icon.svg",
   },
@@ -46,7 +57,10 @@ export default function RootLayout({
       >
         <AuthProvider>
           <ThemeProvider>
-            <AppShell>{children}</AppShell>
+            <ToastProvider>
+              <RouteProgressBar />
+              <AppShell>{children}</AppShell>
+            </ToastProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

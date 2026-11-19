@@ -19,6 +19,7 @@ import {
   type User,
 } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
 
 const PAGE_SIZE = 20;
 
@@ -61,6 +62,7 @@ async function loadMerged(
 export default function AdminVerificationsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("pending");
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -114,9 +116,11 @@ export default function AdminVerificationsPage() {
     try {
       await approveUser(target.id);
       setMessage(`${target.email} has been approved.`);
+      toast.success(`${target.email} approved`);
       await loadUsers();
     } catch {
       setError("Could not approve this user. Please try again.");
+      toast.error("Could not approve user");
     } finally {
       setActingId(null);
     }
@@ -136,9 +140,11 @@ export default function AdminVerificationsPage() {
     try {
       await updateUserStatus(target.id, "suspended");
       setMessage(`${target.email} has been rejected.`);
+      toast.info(`${target.email} rejected`);
       await loadUsers();
     } catch {
       setError("Could not reject this user. Please try again.");
+      toast.error("Could not reject user");
     } finally {
       setActingId(null);
     }
@@ -197,7 +203,7 @@ export default function AdminVerificationsPage() {
           <tbody>
             {loading &&
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-slate-100">
+                <tr key={i} className="border-b border-border">
                   <td className="px-4 py-3" colSpan={7}>
                     <Skeleton className="h-4 w-full" />
                   </td>
@@ -219,7 +225,7 @@ export default function AdminVerificationsPage() {
 
             {!loading &&
               items.map((row) => (
-                <tr key={row.id} className="border-b border-slate-100">
+                <tr key={row.id} className="border-b border-border">
                   <td className="px-4 py-3 text-foreground font-medium">
                     {row.full_name || "—"}
                   </td>

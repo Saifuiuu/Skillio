@@ -33,6 +33,8 @@ import {
 } from "@/lib/applications";
 import { getFirstName, greetingForNow } from "@/lib/nav";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
+import GettingStartedCard from "@/components/GettingStartedCard";
 import { cn } from "@/lib/utils";
 
 type DashStats = {
@@ -44,6 +46,7 @@ type DashStats = {
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading, refreshUser } = useAuth();
+  const { toast } = useToast();
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [nameDismissed, setNameDismissed] = useState(false);
@@ -181,8 +184,9 @@ export default function DashboardPage() {
     setResendLoading(true);
     try {
       await resendVerification(user.email);
+      toast.info("Verification email sent");
     } catch {
-      /* generic */
+      toast.error("Could not send verification email");
     } finally {
       setResendMsg("If that email needs verification, a new link has been sent.");
       setResendLoading(false);
@@ -201,8 +205,10 @@ export default function DashboardPage() {
     try {
       await updateMe({ full_name: cleaned });
       await refreshUser();
+      toast.success("Name updated successfully");
     } catch {
       setNameError("Could not update name. Please try again.");
+      toast.error("Could not update name");
     } finally {
       setNameSaving(false);
     }
@@ -284,6 +290,26 @@ export default function DashboardPage() {
         <div className="mt-5 rounded-3xl border border-amber-300/70 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
           Your account is waiting for verification. An admin will review it
           before you can use all features.
+        </div>
+      )}
+
+      {user.role !== "admin" && (
+        <div className="mt-5">
+          <GettingStartedCard
+            userId={user.id}
+            role={user.role}
+            hasName={Boolean(user.full_name)}
+            emailVerified={user.email_verified}
+            userStatus={user.status}
+            cvCount={resumes.length}
+            hasAnalyzedCv={resumes.some((r) => r.parse_status === "ok")}
+            applicationsCount={applicationsTotal}
+            jobsCount={jobs.length}
+            applicantsCount={employerTotalApplicants ?? 0}
+            onAddNameClick={() => {
+              setNameDismissed(false);
+            }}
+          />
         </div>
       )}
 

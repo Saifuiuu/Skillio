@@ -16,6 +16,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { inputClass } from "@/components/AuthCard";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
+import { JobDetailSkeleton } from "@/components/PageSkeletons";
 import {
   ApiError,
   applyToJob,
@@ -36,21 +38,10 @@ import {
 } from "@/lib/jobs";
 import { cn } from "@/lib/utils";
 
-function JobDetailSkeleton() {
-  return (
-    <PublicShell>
-      <div className="mx-auto max-w-3xl space-y-4">
-        <Skeleton className="h-8 w-72" />
-        <Skeleton className="mt-4 h-4 w-48" />
-        <Skeleton className="mt-8 h-40 w-full" />
-      </div>
-    </PublicShell>
-  );
-}
-
 function JobDetailContent() {
   const params = useParams<{ id: string }>();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -151,6 +142,7 @@ function JobDetailContent() {
       });
       setMyApplication(app);
       setIsApplyOpen(false);
+      toast.success("Application submitted successfully");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 403) {

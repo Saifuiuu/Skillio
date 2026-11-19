@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/sheet";
 import { inputClass } from "@/components/AuthCard";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/ToastProvider";
+import { MyApplicationsSkeleton } from "@/components/PageSkeletons";
 import {
   ApiError,
   listMyApplications,
@@ -42,6 +44,7 @@ const ACTIVE_STATUSES = new Set([
 function ApplicationsListContent() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
   const [applications, setApplications] = useState<Application[]>([]);
   const [total, setTotal] = useState(0);
@@ -138,12 +141,15 @@ function ApplicationsListContent() {
     try {
       await withdrawApplication(withdrawTarget.id, withdrawReason.trim() || null);
       setWithdrawTarget(null);
+      toast.info("Application withdrawn");
       await loadApplications();
     } catch (err) {
       if (err instanceof ApiError) {
         setWithdrawError(err.message || "Could not withdraw application.");
+        toast.error(err.message || "Could not withdraw application");
       } else {
         setWithdrawError("Failed to withdraw. Please try again.");
+        toast.error("Failed to withdraw application");
       }
     } finally {
       setWithdrawing(false);
@@ -406,7 +412,7 @@ function ApplicationsListContent() {
 
 export default function CandidateApplicationsPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
+    <Suspense fallback={<MyApplicationsSkeleton />}>
       <ApplicationsListContent />
     </Suspense>
   );
