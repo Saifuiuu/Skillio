@@ -22,6 +22,8 @@ import {
   formatFileSize,
   formatResumeDate,
   labelExtraction,
+  labelParseStatus,
+  parseStatusBadgeClass,
   MAX_ACTIVE_RESUMES,
   resumeUploadErrorMessage,
   validateResumeFile,
@@ -84,6 +86,36 @@ export default function CandidateResumesPage() {
     }
   }, [user, load]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Poll for background CV parsing updates (every 3s up to ~3 mins)
+  const hasParsing = items.some((item) => item.parse_status === "parsing");
+
+  useEffect(() => {
+    if (!hasParsing || tab !== "active") return;
+
+    let iterations = 0;
+    const maxIterations = 60; // 60 * 3s = 180s = 3 minutes
+
+    const interval = setInterval(async () => {
+      iterations += 1;
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (iterations > maxIterations) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const list = await listResumes(tab);
+        setItems(list);
+        if (tab === "active") {
+          setActiveCount(list.length);
+        }
+      } catch {
+        // silently ignore background polling errors
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [hasParsing, tab]);
 
   async function onUpload(e: FormEvent) {
     e.preventDefault();
@@ -322,15 +354,23 @@ export default function CandidateResumesPage() {
                     {resume.original_filename} · {formatFileSize(resume.file_size_bytes)}{" "}
                     · Uploaded {formatResumeDate(resume.created_at)}
                   </p>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${extractionBadgeClass(resume.extraction_status)}`}
                     >
                       {labelExtraction(resume.extraction_status)}
                     </span>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${parseStatusBadgeClass(resume.parse_status)}`}
+                    >
+                      {resume.parse_status === "parsing" && (
+                        <span className="mr-1.5 inline-block h-2 w-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      )}
+                      {labelParseStatus(resume.parse_status)}
+                    </span>
                     {(resume.extraction_status === "empty" ||
                       resume.extraction_status === "failed") && (
-                      <p className="mt-1 text-xs text-amber-700">
+                      <p className="w-full text-xs text-amber-700 dark:text-amber-400">
                         Text could not be read from this file
                       </p>
                     )}

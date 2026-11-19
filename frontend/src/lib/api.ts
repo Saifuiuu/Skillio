@@ -324,6 +324,27 @@ export function approveUser(userId: string) {
 
 export type ExtractionStatus = "ok" | "empty" | "failed";
 export type ResumeStatus = "active" | "archived";
+export type ParseStatus = "not_parsed" | "parsing" | "ok" | "failed";
+
+export type EducationItem = {
+  degree: string;
+  institution: string;
+  year?: number | string | null;
+};
+
+export type ExperienceItem = {
+  title: string;
+  company: string;
+  duration_text?: string | null;
+};
+
+export type ParsedResume = {
+  skills: string[];
+  education: EducationItem[];
+  experience: ExperienceItem[];
+  total_experience_years: number | null;
+  it_domain_confidence: number;
+};
 
 export type ApplicationStatus =
   | "applied"
@@ -398,6 +419,7 @@ export type Resume = {
   file_size_bytes: number;
   extraction_status: ExtractionStatus;
   status: ResumeStatus;
+  parse_status: ParseStatus;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -405,6 +427,10 @@ export type Resume = {
 
 export type ResumeDetail = Resume & {
   extracted_text: string | null;
+  parsed_data: ParsedResume | null;
+  parsed_by: string | null;
+  parsed_at: string | null;
+  parse_error: string | null;
 };
 
 export function listResumes(status: ResumeStatus = "active") {
@@ -413,6 +439,10 @@ export function listResumes(status: ResumeStatus = "active") {
 
 export function getResume(id: string) {
   return authed<ResumeDetail>(`/resumes/${id}`);
+}
+
+export function parseResume(id: string) {
+  return authed<Resume>(`/resumes/${id}/parse`, { method: "POST" });
 }
 
 export function uploadResume(title: string, file: File) {
