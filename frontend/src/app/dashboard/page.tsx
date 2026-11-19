@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
@@ -13,17 +14,26 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LinkButton } from "@/components/ui/button";
 import {
   listAdminUsers,
+  listJobApplications,
   listJobs,
+  listMyApplications,
   listMyJobs,
   listResumes,
   resendVerification,
   updateMe,
+  type Application,
   type Job,
   type Resume,
   type User,
 } from "@/lib/api";
+import {
+  formatApplicationDate,
+  labelApplicationStatus,
+  statusBadgeClass,
+} from "@/lib/applications";
 import { getFirstName, greetingForNow } from "@/lib/nav";
 import { useAuth } from "@/components/AuthProvider";
+import { cn } from "@/lib/utils";
 
 type DashStats = {
   chips: { label: string; value: string | number }[];
@@ -48,6 +58,10 @@ export default function DashboardPage() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+  const [myApplications, setMyApplications] = useState<Application[]>([]);
+  const [applicationsTotal, setApplicationsTotal] = useState(0);
+  const [activeApplicationsCount, setActiveApplicationsCount] = useState(0);
+  const [employerTotalApplicants, setEmployerTotalApplicants] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -61,17 +75,27 @@ export default function DashboardPage() {
       setStats((s) => ({ ...s, loading: true, error: null }));
       try {
         if (user!.role === "candidate") {
-          const [cvs, jobsRes] = await Promise.all([
+          const [cvs, jobsRes, appsRes] = await Promise.all([
             listResumes("active"),
             listJobs({ page: 1, page_size: 1 }),
+            listMyApplications({ page: 1, page_size: 5 }),
           ]);
           if (cancelled) return;
           setResumes(cvs);
+          setMyApplications(appsRes.items);
+          setApplicationsTotal(appsRes.total);
+          const activeCount = appsRes.items.filter((a) =>
+            ["applied", "under_review", "shortlisted", "interview"].includes(
+              a.status
+            )
+          ).length;
+          setActiveApplicationsCount(activeCount);
           setStats({
             loading: false,
             error: null,
             chips: [
               { label: "Active CVs", value: cvs.length },
+              { label: "Applications", value: appsRes.total },
               { label: "Open jobs", value: jobsRes.total },
             ],
           });
@@ -83,12 +107,33 @@ export default function DashboardPage() {
           const filled = mine.items.filter(
             (j) => j.status === "closed_filled"
           ).length;
+
+          let totalApplicants = 0;
+          const sampleJobs = mine.items.slice(0, 10);
+          if (sampleJobs.length > 0) {
+            try {
+              const appCounts = await Promise.all(
+                sampleJobs.map((j) =>
+                  listJobApplications(j.id, { page: 1, page_size: 1 })
+                )
+              );
+              totalApplicants = appCounts.reduce(
+                (sum, res) => sum + res.total,
+                0
+              );
+            } catch {
+              // ignore count error
+            }
+          }
+          if (cancelled) return;
+          setEmployerTotalApplicants(totalApplicants);
           setStats({
             loading: false,
             error: null,
             chips: [
               { label: "Active jobs", value: active },
               { label: "Filled jobs", value: filled },
+              { label: "Total applicants", value: totalApplicants },
             ],
           });
         } else if (user!.role === "admin") {
@@ -297,13 +342,77 @@ export default function DashboardPage() {
                 Browse jobs
               </LinkButton>
             </SurfaceCard>
-            <SurfaceCard variant="feature" className="md:col-span-2">
+            <SurfaceCard className="md:col-span-2">
               <CardHeader
                 title="Applications"
-                subtitle="Track applications in one place"
+                subtitle={
+                  applicationsTotal > 0
+                    ? `${applicationsTotal} submitted · ${activeApplicationsCount} in progress`
+                    : "Track applications in one place"
+                }
+                action={
+                  <LinkButton
+                    href="/candidate/applications"
+                    variant="ghost"
+                    size="sm"
+                  >
+                    View all
+                  </LinkButton>
+                }
               />
-              <p className="text-sm text-ink-foreground/80">Coming soon</p>
-              <HatchedPlaceholder dark />
+              {stats.loading ? (
+                <Skeleton className="h-24 w-full rounded-2xl" />
+              ) : myApplications.length === 0 ? (
+                <div className="flex flex-col items-start gap-3 text-sm text-muted-foreground">
+                  <p>You have not applied to any jobs yet.</p>
+                  <LinkButton href="/jobs" variant="brand" size="sm">
+                    Browse jobs
+                  </LinkButton>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <ul className="divide-y divide-border/60">
+                    {myApplications.slice(0, 3).map((app) => (
+                      <li
+                        key={app.id}
+                        className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={`/jobs/${app.job_id}`}
+                            className="truncate text-sm font-medium text-foreground hover:underline"
+                          >
+                            {app.job_title}
+                          </Link>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {app.company_name} · Applied{" "}
+                            {formatApplicationDate(app.created_at)}
+                          </p>
+                        </div>
+                        <div className="shrink-0 pt-1 sm:pt-0">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border capitalize",
+                              statusBadgeClass(app.status)
+                            )}
+                          >
+                            {labelApplicationStatus(app.status)}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="pt-1">
+                    <LinkButton
+                      href="/candidate/applications"
+                      variant="outline"
+                      size="sm"
+                    >
+                      View all applications ({applicationsTotal})
+                    </LinkButton>
+                  </div>
+                </div>
+              )}
             </SurfaceCard>
           </>
         )}
@@ -345,13 +454,44 @@ export default function DashboardPage() {
                 Post a job
               </LinkButton>
             </SurfaceCard>
-            <SurfaceCard variant="feature">
+            <SurfaceCard>
               <CardHeader
                 title="Applicants"
-                subtitle="Review candidate matches"
+                subtitle={
+                  employerTotalApplicants !== null && employerTotalApplicants > 0
+                    ? `${employerTotalApplicants} total candidate application${
+                        employerTotalApplicants === 1 ? "" : "s"
+                      }`
+                    : "Review candidates who applied"
+                }
+                action={
+                  <LinkButton href="/employer/jobs" variant="ghost" size="sm">
+                    Manage jobs
+                  </LinkButton>
+                }
               />
-              <p className="text-sm text-ink-foreground/80">Coming soon</p>
-              <HatchedPlaceholder dark />
+              {stats.loading ? (
+                <Skeleton className="h-24 w-full rounded-2xl" />
+              ) : jobs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Post a job to start receiving applications.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {employerTotalApplicants !== null && employerTotalApplicants > 0
+                      ? `${employerTotalApplicants} candidate application${
+                          employerTotalApplicants === 1 ? "" : "s"
+                        } across your recent postings.`
+                      : "No candidate applications yet on your posted jobs."}
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <LinkButton href="/employer/jobs" variant="brand" size="sm">
+                      Review applicants
+                    </LinkButton>
+                  </div>
+                </div>
+              )}
             </SurfaceCard>
           </>
         )}

@@ -116,7 +116,14 @@ export default function EmployerJobsPage() {
                   {labelJobStatus(job.status)}
                 </span>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <LinkButton
+                  href={`/employer/jobs/${job.id}/applicants`}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Applicants
+                </LinkButton>
                 {job.status === "active" && (
                   <>
                     <Link
