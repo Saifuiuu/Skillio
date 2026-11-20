@@ -6,6 +6,7 @@ import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import AuthCard, { buttonClass, inputClass } from "@/components/AuthCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import PasswordInput from "@/components/PasswordInput";
+import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastProvider";
 import { login } from "@/lib/api";
 
@@ -22,6 +23,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { refreshUser } = useAuth();
   const loggedOut = Boolean(searchParams.get("loggedOut"));
 
   // Remount a fresh empty form after logout (avoids setState-in-effect lint + autofill).
@@ -50,6 +52,7 @@ function LoginForm() {
     setLoading(true);
     try {
       await login(email, password);
+      await refreshUser();
       toast.success("Signed in successfully");
       router.push("/dashboard");
     } catch (err) {
