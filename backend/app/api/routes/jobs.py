@@ -18,8 +18,9 @@ from app.Dtos.application import (
 from app.Dtos.job import JobCreate, JobOut, JobUpdate, PaginatedJobsOut
 from app.models.application import Application, ApplicationStatus
 from app.models.job import Job, JobCategory, JobSource, JobStatus, JobType, WorkMode
-from app.models.resume import Resume
+from app.models.resume import ParseStatus, Resume
 from app.models.user import User, UserStatus
+from app.services.matching import compute_match
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -110,6 +111,7 @@ def list_job_applications(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=_MAX_PAGE_SIZE),
     status_filter: ApplicationStatus | None = Query(None, alias="status"),
+    sort: str = Query("newest", pattern="^(newest|match)$"),
     db: Session = Depends(get_db),
     employer: User = Depends(require_employer),
 ):
@@ -126,33 +128,105 @@ def list_job_applications(
     total = (
         db.scalar(select(func.count()).select_from(Application).where(*filters)) or 0
     )
-    rows = db.execute(
-        select(Application, User, Resume.title)
-        .join(User, User.id == Application.candidate_id)
-        .join(Resume, Resume.id == Application.resume_id)
-        .where(*filters)
-        .order_by(Application.created_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    ).all()
-    items = [
-        ApplicationEmployerOut(
-            id=application.id,
-            job_id=application.job_id,
-            candidate_id=candidate.id,
-            candidate_full_name=candidate.full_name,
-            candidate_email=candidate.email,
-            resume_id=application.resume_id,
-            resume_title=resume_title,
-            status=application.status,
-            cover_note=application.cover_note,
-            withdraw_reason=application.withdraw_reason,
-            created_at=application.created_at,
-            updated_at=application.updated_at,
-            status_updated_at=application.status_updated_at,
-        )
-        for application, candidate, resume_title in rows
-    ]
+
+    if sort == "match":
+        rows = db.execute(
+            select(Application, User, Resume)
+            .join(User, User.id == Application.candidate_id)
+            .join(Resume, Resume.id == Application.resume_id)
+            .where(*filters)
+        ).all()
+
+        scored_rows: list[
+            tuple[Application, User, Resume, int | None, list[str] | None]
+        ] = []
+        for app, cand, resume in rows:
+            if resume.parse_status == ParseStatus.ok and resume.parsed_data:
+                m = compute_match(resume.parsed_data, job)
+                m_score = m.score
+                m_missing = m.missing_skills
+            else:
+                m_score = None
+                m_missing = None
+            scored_rows.append((app, cand, resume, m_score, m_missing))
+
+        # sort=match par match_score DESC, None sabse neeche, tie-break application created_at ASC (earliest first)
+        def _match_key(
+            item: tuple[Application, User, Resume, int | None, list[str] | None],
+        ):
+            app, _, _, score, _ = item
+            return (
+                0 if score is not None else 1,
+                -(score if score is not None else 0),
+                app.created_at,
+            )
+
+        scored_rows.sort(key=_match_key)
+
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_slice = scored_rows[start:end]
+
+        items = [
+            ApplicationEmployerOut(
+                id=app.id,
+                job_id=app.job_id,
+                candidate_id=cand.id,
+                candidate_full_name=cand.full_name,
+                candidate_email=cand.email,
+                resume_id=app.resume_id,
+                resume_title=resume.title,
+                status=app.status,
+                cover_note=app.cover_note,
+                withdraw_reason=app.withdraw_reason,
+                created_at=app.created_at,
+                updated_at=app.updated_at,
+                status_updated_at=app.status_updated_at,
+                match_score=score,
+                match_skills_missing=missing,
+            )
+            for app, cand, resume, score, missing in page_slice
+        ]
+    else:
+        rows = db.execute(
+            select(Application, User, Resume)
+            .join(User, User.id == Application.candidate_id)
+            .join(Resume, Resume.id == Application.resume_id)
+            .where(*filters)
+            .order_by(Application.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        ).all()
+
+        items = []
+        for app, cand, resume in rows:
+            if resume.parse_status == ParseStatus.ok and resume.parsed_data:
+                m = compute_match(resume.parsed_data, job)
+                m_score = m.score
+                m_missing = m.missing_skills
+            else:
+                m_score = None
+                m_missing = None
+            items.append(
+                ApplicationEmployerOut(
+                    id=app.id,
+                    job_id=app.job_id,
+                    candidate_id=cand.id,
+                    candidate_full_name=cand.full_name,
+                    candidate_email=cand.email,
+                    resume_id=app.resume_id,
+                    resume_title=resume.title,
+                    status=app.status,
+                    cover_note=app.cover_note,
+                    withdraw_reason=app.withdraw_reason,
+                    created_at=app.created_at,
+                    updated_at=app.updated_at,
+                    status_updated_at=app.status_updated_at,
+                    match_score=m_score,
+                    match_skills_missing=m_missing,
+                )
+            )
+
     return PaginatedEmployerApplicationsOut(
         items=items, total=total, page=page, page_size=page_size
     )

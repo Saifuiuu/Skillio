@@ -88,6 +88,8 @@ class ApplicationEmployerOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     status_updated_at: datetime
+    match_score: int | None = None
+    match_skills_missing: list[str] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

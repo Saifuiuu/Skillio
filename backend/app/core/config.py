@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str | None = None
     GROQ_MODEL: str | None = None
 
+    # Matching Engine
+    MATCH_WEIGHT_SKILLS: float = 0.7
+    MATCH_WEIGHT_EXPERIENCE: float = 0.3
+    MATCH_MAX_JOBS_SCANNED: int = 500
+    MATCH_NEUTRAL_EXPERIENCE: float = 0.5
+
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),
         # utf-8-sig strips a UTF-8 BOM if the editor re-adds one on save

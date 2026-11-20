@@ -23,8 +23,9 @@ from app.Dtos.application import (
 )
 from app.models.application import Application, ApplicationStatus
 from app.models.job import Job, JobSource, JobStatus
-from app.models.resume import Resume, ResumeStatus
+from app.models.resume import ParseStatus, Resume, ResumeStatus
 from app.models.user import User, UserStatus
+from app.services.matching import compute_match
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -73,8 +74,16 @@ def _application_out(
 def _employer_application_out(
     application: Application,
     candidate: User,
-    resume_title: str,
+    resume: Resume,
+    job: Job | None = None,
 ) -> ApplicationEmployerOut:
+    match_score = None
+    match_skills_missing = None
+    if job is not None and resume.parse_status == ParseStatus.ok and resume.parsed_data:
+        m = compute_match(resume.parsed_data, job)
+        match_score = m.score
+        match_skills_missing = m.missing_skills
+
     return ApplicationEmployerOut(
         id=application.id,
         job_id=application.job_id,
@@ -82,13 +91,15 @@ def _employer_application_out(
         candidate_full_name=candidate.full_name,
         candidate_email=candidate.email,
         resume_id=application.resume_id,
-        resume_title=resume_title,
+        resume_title=resume.title,
         status=application.status,
         cover_note=application.cover_note,
         withdraw_reason=application.withdraw_reason,
         created_at=application.created_at,
         updated_at=application.updated_at,
         status_updated_at=application.status_updated_at,
+        match_score=match_score,
+        match_skills_missing=match_skills_missing,
     )
 
 
@@ -223,7 +234,7 @@ def update_application_status(
         application.status_updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(application)
-    return _employer_application_out(application, candidate, resume.title)
+    return _employer_application_out(application, candidate, resume, job)
 
 
 @router.get("/{application_id}/resume")
@@ -311,7 +322,7 @@ def get_application(
 
     if current_user.role.value == "candidate":
         return _application_out(application, job, resume.title)
-    return _employer_application_out(application, candidate, resume.title)
+    return _employer_application_out(application, candidate, resume, job)
 
 
 @router.post("/{application_id}/withdraw", response_model=ApplicationOut)
