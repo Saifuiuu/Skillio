@@ -14,7 +14,7 @@ import { formatPostedDate, formatSalary, labelJobStatus } from "@/lib/jobs";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastProvider";
 import { EmployerJobsSkeleton } from "@/components/PageSkeletons";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Loader2 } from "lucide-react";
 
 export default function EmployerJobsPage() {
   const router = useRouter();
@@ -114,7 +114,14 @@ export default function EmployerJobsPage() {
           </LinkButton>
         </div>
       ) : (
-        <ul className="mt-6 space-y-3">
+        <>
+          {loading && jobs.length > 0 && (
+            <div className="mt-4 flex items-center gap-2 px-1 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin text-brand" />
+              <span>Updating jobs…</span>
+            </div>
+          )}
+          <ul className="mt-6 space-y-3">
           {jobs.map((job) => (
             <li
               key={job.id}
@@ -174,6 +181,7 @@ export default function EmployerJobsPage() {
             </li>
           ))}
         </ul>
+        </>
       )}
     </DashboardShell>
   );

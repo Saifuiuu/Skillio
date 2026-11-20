@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { Download, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, FileText, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -308,7 +308,7 @@ function ApplicantsContent() {
         </div>
       )}
 
-      {loading ? (
+      {loading && applicants.length === 0 && (
         <div className="mt-6 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
@@ -321,7 +321,16 @@ function ApplicantsContent() {
             </div>
           ))}
         </div>
-      ) : applicants.length === 0 ? (
+      )}
+
+      {loading && applicants.length > 0 && (
+        <div className="mt-4 flex items-center gap-2 px-1 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin text-brand" />
+          <span>Updating applicants…</span>
+        </div>
+      )}
+
+      {!loading && applicants.length === 0 && (
         <div className="mt-8 rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center">
           <h2 className="text-base font-semibold text-foreground">No applicants yet</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
@@ -330,7 +339,9 @@ function ApplicantsContent() {
               : `No applicants currently under status "${labelApplicationStatus(statusFilter)}".`}
           </p>
         </div>
-      ) : (
+      )}
+
+      {applicants.length > 0 && (
         <div className="mt-6 space-y-3">
           {applicants.map((app) => {
             const isTerminal = TERMINAL_STATUSES.has(app.status);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Loader2 } from "lucide-react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -195,7 +196,7 @@ function ApplicationsListContent() {
         </div>
       )}
 
-      {loading ? (
+      {loading && applications.length === 0 && (
         <div className="mt-6 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
@@ -208,7 +209,16 @@ function ApplicationsListContent() {
             </div>
           ))}
         </div>
-      ) : filteredApplications.length === 0 ? (
+      )}
+
+      {loading && applications.length > 0 && (
+        <div className="mt-4 flex items-center gap-2 px-1 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin text-brand" />
+          <span>Updating applications…</span>
+        </div>
+      )}
+
+      {!loading && filteredApplications.length === 0 && (
         <div className="mt-8 rounded-3xl border border-dashed border-border bg-card/60 p-10 text-center">
           <h2 className="text-base font-semibold text-foreground">No applications found</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
@@ -222,7 +232,9 @@ function ApplicationsListContent() {
             </LinkButton>
           </div>
         </div>
-      ) : (
+      )}
+
+      {filteredApplications.length > 0 && (
         <div className="mt-6 space-y-3">
           {filteredApplications.map((app) => {
             const canWithdraw =

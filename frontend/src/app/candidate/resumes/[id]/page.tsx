@@ -13,7 +13,7 @@ import {
   Sparkles,
   Wrench,
 } from "lucide-react";
-import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
+import DashboardShell from "@/components/DashboardShell";
 import { Button } from "@/components/ui/button";
 import {
   CardHeader,
@@ -51,7 +51,42 @@ import { cn } from "@/lib/utils";
 const PREVIEW_CHARS = 2000;
 
 function ResumeDetailSkeleton() {
-  return <DashboardSkeleton />;
+  return (
+    <DashboardShell>
+      <div className="space-y-6">
+        <Skeleton className="h-4 w-32" />
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-48" />
+          <div className="flex gap-2 pt-2">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+        </div>
+        <div className="rounded-3xl border border-border bg-card p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-60" />
+            </div>
+            <Skeleton className="h-8 w-28 rounded-full" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 pt-4">
+            <Skeleton className="h-20 rounded-2xl" />
+            <Skeleton className="h-20 rounded-2xl" />
+          </div>
+        </div>
+        <div className="rounded-3xl border border-border bg-card p-6 space-y-4">
+          <Skeleton className="h-6 w-32" />
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-7 w-20 rounded-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </DashboardShell>
+  );
 }
 
 function ResumeDetailContent() {
