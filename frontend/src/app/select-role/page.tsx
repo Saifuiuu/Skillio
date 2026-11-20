@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import AuthCard, { buttonClass, inputClass } from "@/components/AuthCard";
+import { useAuth } from "@/components/AuthProvider";
 import { ApiError, completeGoogleSignup, getGooglePending } from "@/lib/api";
 
 type SignupRole = "candidate" | "employer" | "interviewer";
@@ -40,6 +41,7 @@ function validateName(name: string): string | null {
 
 export default function SelectRolePage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [role, setRole] = useState<SignupRole | null>(null);
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +70,7 @@ export default function SelectRolePage() {
     setLoading(true);
     try {
       await completeGoogleSignup(role, fullName.trim().replace(/\s+/g, " "));
+      await refreshUser();
       router.replace("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {

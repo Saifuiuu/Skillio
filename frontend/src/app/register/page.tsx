@@ -6,6 +6,7 @@ import { FormEvent, useState } from "react";
 import AuthCard, { buttonClass, inputClass } from "@/components/AuthCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import PasswordInput from "@/components/PasswordInput";
+import { useAuth } from "@/components/AuthProvider";
 import { login, register } from "@/lib/api";
 
 type SignupRole = "candidate" | "employer" | "interviewer";
@@ -27,6 +28,7 @@ function validateName(name: string): string | null {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { user, refreshUser } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +54,7 @@ export default function RegisterPage() {
     try {
       await register(email, password, role, fullName.trim().replace(/\s+/g, " "));
       await login(email, password);
+      await refreshUser();
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -60,20 +63,44 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleContinue() {
+    if (!user) {
+      await refreshUser();
+    }
+    router.push("/dashboard");
+  }
+
   if (done) {
+    if (role === "candidate") {
+      return (
+        <AuthCard
+          title="Account created"
+          subtitle="We sent a verification link to your email. You can start using Skillio now; a reminder stays on your dashboard until you verify."
+        >
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={handleContinue}
+          >
+            Go to dashboard
+          </button>
+        </AuthCard>
+      );
+    }
+
     return (
       <AuthCard
         title="Account created"
         subtitle="Check your email to verify your address before continuing."
       >
         <p className="mb-4 text-sm text-foreground/80">
-          We sent a verification link to your inbox. You can continue to the
-          dashboard now; a reminder will appear until you verify.
+          We sent a verification link to your email. Your account is pending admin review
+          before full platform access is enabled.
         </p>
         <button
           type="button"
           className={buttonClass}
-          onClick={() => router.push("/dashboard")}
+          onClick={handleContinue}
         >
           Continue to dashboard
         </button>
