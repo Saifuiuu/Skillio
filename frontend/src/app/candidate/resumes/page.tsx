@@ -30,7 +30,7 @@ import {
 } from "@/lib/resumes";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastProvider";
-import { FileText } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 
 export default function CandidateResumesPage() {
   const router = useRouter();
@@ -302,13 +302,20 @@ export default function CandidateResumesPage() {
       )}
 
       <div className="mt-6 space-y-3">
-        {loading &&
+        {loading && items.length === 0 &&
           Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="rounded-3xl border border-border bg-card p-4">
               <Skeleton className="h-5 w-48" />
               <Skeleton className="mt-3 h-4 w-72" />
             </div>
           ))}
+
+        {loading && items.length > 0 && (
+          <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin text-brand" />
+            <span>Updating CVs…</span>
+          </div>
+        )}
 
         {!loading && items.length === 0 && (
           <div className="rounded-3xl border border-border bg-card p-10 text-center space-y-3">
@@ -326,8 +333,7 @@ export default function CandidateResumesPage() {
           </div>
         )}
 
-        {!loading &&
-          items.map((resume) => (
+        {items.map((resume) => (
             <div
               key={resume.id}
               className="rounded-3xl border border-border bg-card p-4"

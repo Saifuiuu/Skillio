@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastProvider";
+import { Loader2 } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -187,6 +188,13 @@ export default function AdminVerificationsPage() {
         </p>
       )}
 
+      {loading && items.length > 0 && (
+        <div className="mt-4 flex items-center gap-2 px-1 text-xs text-muted-foreground">
+          <Loader2 className="size-3.5 animate-spin text-brand" />
+          <span>Updating verifications…</span>
+        </div>
+      )}
+
       <div className="mt-6 overflow-x-auto rounded-3xl border border-border bg-card">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-border bg-muted text-xs uppercase tracking-wide text-muted-foreground">
@@ -201,7 +209,7 @@ export default function AdminVerificationsPage() {
             </tr>
           </thead>
           <tbody>
-            {loading &&
+            {loading && items.length === 0 &&
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-border">
                   <td className="px-4 py-3" colSpan={7}>
@@ -223,8 +231,7 @@ export default function AdminVerificationsPage() {
               </tr>
             )}
 
-            {!loading &&
-              items.map((row) => (
+            {items.map((row) => (
                 <tr key={row.id} className="border-b border-border">
                   <td className="px-4 py-3 text-foreground font-medium">
                     {row.full_name || "—"}
