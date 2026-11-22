@@ -91,11 +91,10 @@ export default function RegisterPage() {
     return (
       <AuthCard
         title="Account created"
-        subtitle="Check your email to verify your address before continuing."
+        subtitle="Your account is waiting for admin approval."
       >
         <p className="mb-4 text-sm text-foreground/80">
-          We sent a verification link to your email. Your account is pending admin review
-          before full platform access is enabled.
+          We sent a verification link to your email.
         </p>
         <button
           type="button"

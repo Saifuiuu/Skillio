@@ -23,6 +23,7 @@ export interface OnboardingStep {
   actionLabel?: string;
   onActionClick?: () => void;
   note?: string;
+  disabled?: boolean;
 }
 
 interface GettingStartedProps {
@@ -161,8 +162,10 @@ export default function GettingStartedCard({
         title: "Post your first IT role",
         description: "Publish requirements and start attracting talent.",
         completed: jobsCount > 0,
-        actionHref: isApproved ? "/employer/jobs/new" : undefined,
+        actionHref: "/employer/jobs/new",
         actionLabel: "Post a job",
+        disabled: !isApproved,
+        note: !isApproved ? "Available after approval" : undefined,
       },
       {
         id: "review_applicants",
@@ -171,6 +174,8 @@ export default function GettingStartedCard({
         completed: applicantsCount > 0,
         actionHref: "/employer/jobs",
         actionLabel: "Review applicants",
+        disabled: !isApproved,
+        note: !isApproved ? "Available after approval" : undefined,
       },
     ];
   } else if (role === "interviewer") {
@@ -292,9 +297,19 @@ export default function GettingStartedCard({
                 </div>
               </div>
 
-              {!step.completed && (step.actionHref || step.onActionClick) && (
+              {!step.completed && (step.actionHref || step.onActionClick || step.disabled) && (
                 <div className="shrink-0 pl-7 sm:pl-0">
-                  {step.actionHref ? (
+                  {step.disabled ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      className="rounded-full text-xs h-7 px-3"
+                    >
+                      {step.actionLabel ?? "Open"}
+                    </Button>
+                  ) : step.actionHref ? (
                     <LinkButton
                       href={step.actionHref}
                       variant="outline"
