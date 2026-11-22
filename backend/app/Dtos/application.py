@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -92,6 +93,35 @@ class ApplicationEmployerOut(BaseModel):
     match_skills_missing: list[str] | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+def _to_employer_out(
+    application: Any,
+    candidate: Any,
+    resume: Any,
+    score: int | None = None,
+    missing: list[str] | None = None,
+) -> ApplicationEmployerOut:
+    return ApplicationEmployerOut(
+        id=application.id,
+        job_id=application.job_id,
+        candidate_id=candidate.id,
+        candidate_full_name=candidate.full_name,
+        candidate_email=candidate.email,
+        resume_id=application.resume_id,
+        resume_title=resume.title,
+        status=application.status,
+        cover_note=application.cover_note,
+        withdraw_reason=application.withdraw_reason,
+        created_at=application.created_at,
+        updated_at=application.updated_at,
+        status_updated_at=application.status_updated_at,
+        match_score=score,
+        match_skills_missing=missing,
+    )
+
+
+to_employer_out = _to_employer_out
 
 
 class PaginatedApplicationsOut(BaseModel):

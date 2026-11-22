@@ -12,8 +12,8 @@ from app.api.deps import (
 )
 from app.core.database import get_db
 from app.Dtos.application import (
-    ApplicationEmployerOut,
     PaginatedEmployerApplicationsOut,
+    _to_employer_out,
 )
 from app.Dtos.job import JobCreate, JobOut, JobUpdate, PaginatedJobsOut
 from app.models.application import Application, ApplicationStatus
@@ -168,23 +168,7 @@ def list_job_applications(
         page_slice = scored_rows[start:end]
 
         items = [
-            ApplicationEmployerOut(
-                id=app.id,
-                job_id=app.job_id,
-                candidate_id=cand.id,
-                candidate_full_name=cand.full_name,
-                candidate_email=cand.email,
-                resume_id=app.resume_id,
-                resume_title=resume.title,
-                status=app.status,
-                cover_note=app.cover_note,
-                withdraw_reason=app.withdraw_reason,
-                created_at=app.created_at,
-                updated_at=app.updated_at,
-                status_updated_at=app.status_updated_at,
-                match_score=score,
-                match_skills_missing=missing,
-            )
+            _to_employer_out(app, cand, resume, score, missing)
             for app, cand, resume, score, missing in page_slice
         ]
     else:
@@ -207,25 +191,7 @@ def list_job_applications(
             else:
                 m_score = None
                 m_missing = None
-            items.append(
-                ApplicationEmployerOut(
-                    id=app.id,
-                    job_id=app.job_id,
-                    candidate_id=cand.id,
-                    candidate_full_name=cand.full_name,
-                    candidate_email=cand.email,
-                    resume_id=app.resume_id,
-                    resume_title=resume.title,
-                    status=app.status,
-                    cover_note=app.cover_note,
-                    withdraw_reason=app.withdraw_reason,
-                    created_at=app.created_at,
-                    updated_at=app.updated_at,
-                    status_updated_at=app.status_updated_at,
-                    match_score=m_score,
-                    match_skills_missing=m_missing,
-                )
-            )
+            items.append(_to_employer_out(app, cand, resume, m_score, m_missing))
 
     return PaginatedEmployerApplicationsOut(
         items=items, total=total, page=page, page_size=page_size
