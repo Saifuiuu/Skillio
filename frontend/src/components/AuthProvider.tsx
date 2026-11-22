@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
 import { fetchMe, logout as apiLogout, type User } from "@/lib/api";
 
 type AuthContextValue = {
@@ -22,7 +21,6 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,10 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     } finally {
-      setUser(null);
-      router.replace("/login?loggedOut=1");
+      if (typeof window !== "undefined") {
+        window.location.replace("/login?loggedOut=1");
+      }
     }
-  }, [router]);
+  }, []);
 
   return (
     <AuthContext.Provider
