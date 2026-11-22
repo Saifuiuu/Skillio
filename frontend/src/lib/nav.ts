@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Search,
   ShieldCheck,
+  Sparkles,
   UserCircle2,
   Users,
 } from "lucide-react";
@@ -26,6 +27,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   candidate: [
     { href: "/dashboard", label: "Dashboard", enabled: true, icon: LayoutDashboard },
     { href: "/jobs", label: "Browse jobs", enabled: true, icon: Search },
+    { href: "/candidate/recommendations", label: "Recommended", enabled: true, icon: Sparkles },
     { href: "/candidate/resumes", label: "My CVs", enabled: true, icon: FileText },
     {
       href: "/candidate/applications",

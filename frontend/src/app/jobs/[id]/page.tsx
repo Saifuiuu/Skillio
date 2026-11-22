@@ -18,6 +18,7 @@ import { inputClass } from "@/components/AuthCard";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastProvider";
 import { JobDetailSkeleton } from "@/components/PageSkeletons";
+import JobMatchCard from "@/components/matching/JobMatchCard";
 import {
   ApiError,
   applyToJob,
@@ -307,6 +308,13 @@ function JobDetailContent() {
             ))}
           </div>
         </section>
+
+        {/* Your match card - candidate only */}
+        {isCandidate && user && (
+          <div className="mt-8">
+            <JobMatchCard jobId={job.id} />
+          </div>
+        )}
 
         {/* Bottom apply trigger if not applied yet */}
         {isCandidate && !myApplication && !isScraped && isEmailVerified && (
