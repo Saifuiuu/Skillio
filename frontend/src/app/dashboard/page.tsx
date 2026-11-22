@@ -35,6 +35,7 @@ import { getFirstName, greetingForNow } from "@/lib/nav";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastProvider";
 import GettingStartedCard from "@/components/GettingStartedCard";
+import CandidateTopMatchesCard from "@/components/matching/CandidateTopMatchesCard";
 import { cn } from "@/lib/utils";
 
 type DashStats = {
@@ -381,6 +382,7 @@ export default function DashboardPage() {
                 Browse jobs
               </LinkButton>
             </SurfaceCard>
+            <CandidateTopMatchesCard className="md:col-span-2" />
             <SurfaceCard className="md:col-span-2">
               <CardHeader
                 title="Applications"

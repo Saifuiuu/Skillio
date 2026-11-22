@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 
 export interface MatchBadgeProps {
-  score: number;
+  score: number | null;
   size?: "sm" | "default" | "lg";
   className?: string;
   showTierOnly?: boolean;
@@ -47,6 +47,24 @@ export default function MatchBadge({
   className,
   showTierOnly = false,
 }: MatchBadgeProps) {
+  if (score === null || score === undefined) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full font-medium transition-colors select-none",
+          size === "sm" && "px-2.5 py-0.5 text-xs",
+          size === "default" && "px-3 py-1 text-xs",
+          size === "lg" && "px-3.5 py-1.5 text-sm",
+          "bg-muted text-muted-foreground border border-border",
+          className
+        )}
+      >
+        <span className="size-1.5 rounded-full shrink-0 bg-muted-foreground/60" aria-hidden />
+        <span>Not analyzed</span>
+      </span>
+    );
+  }
+
   const { label, badgeClass, dotClass } = getMatchTier(score);
 
   return (

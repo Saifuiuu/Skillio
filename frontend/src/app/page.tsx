@@ -5,12 +5,14 @@ import { useState } from "react";
 import {
   ArrowRight,
   Code2,
+  FileCheck,
   FileText,
   Layers,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
-  Users,
+  Video,
 } from "lucide-react";
 import PublicShell from "@/components/PublicShell";
 import { LinkButton } from "@/components/ui/button";
@@ -389,16 +391,61 @@ export default function Home() {
 
             <SurfaceCard className="space-y-2">
               <div className="flex items-center justify-between">
-                <Users className="size-5 text-muted-foreground" />
-                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">
-                  In progress
+                <SlidersHorizontal className="size-5 text-brand" />
+                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                  Live
                 </span>
               </div>
               <h3 className="text-sm font-semibold text-foreground">
-                Automated Candidate Matching
+                Skill match (baseline score)
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Multi-factor matching score comparing candidate extracted skills with posted job requirements.
+                Compares skills and experience between your analyzed CV and job requirements to estimate alignment.
+              </p>
+            </SurfaceCard>
+
+            <SurfaceCard className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Sparkles className="size-5 text-muted-foreground" />
+                <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  Coming soon
+                </span>
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Semantic Matching
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Understands related skills, tools, and technical experience beyond exact keyword matches.
+              </p>
+            </SurfaceCard>
+
+            <SurfaceCard className="space-y-2">
+              <div className="flex items-center justify-between">
+                <FileCheck className="size-5 text-muted-foreground" />
+                <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  Coming soon
+                </span>
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">
+                ATS Resume Score
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Checks CV readability, section structure, and formatting against common applicant tracking systems.
+              </p>
+            </SurfaceCard>
+
+            <SurfaceCard className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Video className="size-5 text-muted-foreground" />
+                <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  Coming soon
+                </span>
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Structured Interviews
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Structured technical evaluations, standardized rubrics, and interviewer feedback.
               </p>
             </SurfaceCard>
           </div>

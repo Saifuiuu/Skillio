@@ -17,6 +17,10 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/ToastProvider";
 import { EmployerApplicantsSkeleton } from "@/components/PageSkeletons";
+import MatchBadge from "@/components/matching/MatchBadge";
+import MatchInfoNotice from "@/components/matching/MatchInfoNotice";
+import { Tabs, type TabItem } from "@/components/ui/Tabs";
+import { formatSkill } from "@/lib/resumes";
 import {
   ApiError,
   downloadApplicationResume,
@@ -59,6 +63,11 @@ const ALLOWED_TARGET_STATUSES: {
 
 const TERMINAL_STATUSES = new Set(["selected", "rejected", "withdrawn"]);
 
+const SORT_TABS: TabItem<"newest" | "match">[] = [
+  { value: "newest", label: "Newest" },
+  { value: "match", label: "Best match" },
+];
+
 function ApplicantsContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -76,6 +85,7 @@ function ApplicantsContent() {
   const [error, setError] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
+  const [sort, setSort] = useState<"newest" | "match">("newest");
 
   // Track expanded cover notes
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
@@ -133,15 +143,17 @@ function ApplicantsContent() {
         page,
         page_size: pageSize,
         status: statusFilter === "all" ? undefined : statusFilter,
+        sort,
       });
       setApplicants(res.items);
       setTotal(res.total);
     } catch {
       setError("Failed to load applicants. Please try again.");
+      toast.error("Could not load applicants. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
-  }, [params.id, page, statusFilter]);
+  }, [params.id, page, statusFilter, sort, toast]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -159,6 +171,12 @@ function ApplicantsContent() {
 
   function toggleNote(id: string) {
     setExpandedNotes((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function handleSortChange(newSort: "newest" | "match") {
+    if (newSort === sort) return;
+    setSort(newSort);
+    setPage(1);
   }
 
   async function handleDownload(app: ApplicationEmployer) {
@@ -261,29 +279,46 @@ function ApplicantsContent() {
         </div>
       </div>
 
-      {/* Filter pills */}
-      <div className="mt-6 flex flex-wrap gap-1.5 border-b border-border pb-3">
-        {STATUS_FILTERS.map((f) => {
-          const active = statusFilter === f.value;
-          return (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => {
-                setStatusFilter(f.value);
-                setPage(1);
-              }}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-all duration-150 cursor-pointer select-none",
-                active
-                  ? "bg-ink text-ink-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              {f.label}
-            </button>
-          );
-        })}
+      {/* Filter pills and Sort toggle */}
+      <div className="mt-6 flex flex-col gap-4 border-b border-border pb-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {STATUS_FILTERS.map((f) => {
+            const active = statusFilter === f.value;
+            return (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(f.value);
+                  setPage(1);
+                }}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-all duration-150 cursor-pointer select-none",
+                  active
+                    ? "bg-ink text-ink-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2 self-start lg:self-auto">
+          <span className="text-xs font-medium text-muted-foreground">Sort:</span>
+          <Tabs
+            items={SORT_TABS}
+            value={sort}
+            onChange={handleSortChange}
+            aria-label="Sort applicants"
+          />
+        </div>
+      </div>
+
+      {/* Baseline match notice above list */}
+      <div className="mt-4 flex items-center justify-between">
+        <MatchInfoNotice size="sm" />
       </div>
 
       {statusError && (
@@ -342,7 +377,7 @@ function ApplicantsContent() {
       )}
 
       {applicants.length > 0 && (
-        <div className="mt-6 space-y-3">
+        <div className={cn("mt-6 space-y-3", loading && "opacity-60 transition-opacity")}>
           {applicants.map((app) => {
             const isTerminal = TERMINAL_STATUSES.has(app.status);
             const isNoteExpanded = expandedNotes[app.id] ?? false;
@@ -370,6 +405,29 @@ function ApplicantsContent() {
                       </span>
                       <span>·</span>
                       <span>Applied {formatApplicationDate(app.created_at)}</span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <MatchBadge score={app.match_score} size="sm" />
+
+                      {app.match_skills_missing && app.match_skills_missing.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <span className="text-muted-foreground">Missing skills:</span>
+                          {app.match_skills_missing.slice(0, 5).map((skill, idx) => (
+                            <span
+                              key={idx}
+                              className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground border border-border"
+                            >
+                              {formatSkill(skill)}
+                            </span>
+                          ))}
+                          {app.match_skills_missing.length > 5 && (
+                            <span className="text-[11px] font-medium text-muted-foreground">
+                              +{app.match_skills_missing.length - 5}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {app.cover_note && (

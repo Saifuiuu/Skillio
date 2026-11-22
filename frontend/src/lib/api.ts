@@ -429,6 +429,8 @@ export type ApplicationEmployer = {
   created_at: string;
   updated_at: string;
   status_updated_at: string;
+  match_score: number | null;
+  match_skills_missing: string[] | null;
 };
 
 export type PaginatedApplications = {
@@ -568,6 +570,7 @@ export function listJobApplications(
     page?: number;
     page_size?: number;
     status?: ApplicationStatus;
+    sort?: "newest" | "match";
   } = {}
 ) {
   return authed<PaginatedEmployerApplications>(
