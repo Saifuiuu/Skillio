@@ -91,6 +91,40 @@ export type JobListParams = {
   page_size?: number;
 };
 
+export type Match = {
+  score: number;
+  skill_overlap: number;
+  experience_fit: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  experience_known: boolean;
+  candidate_experience_years: number | null;
+  job_experience_min: number;
+  job_experience_max: number;
+};
+
+export type JobMatch = {
+  id: string;
+  title: string;
+  company_name: string;
+  location: string;
+  job_type: JobType;
+  work_mode: WorkMode;
+  category: JobCategory;
+  salary_min: number | null;
+  salary_max: number | null;
+  currency: string;
+  created_at: string;
+  match: Match;
+};
+
+export type PaginatedJobMatches = {
+  items: JobMatch[];
+  total: number;
+  page: number;
+  page_size: number;
+};
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -572,4 +606,19 @@ export async function downloadApplicationResume(
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+export function getJobMatch(jobId: string, resumeId: string): Promise<Match> {
+  const query = toQuery({ resume_id: resumeId });
+  return authed<Match>(`/matching/jobs/${jobId}${query}`);
+}
+
+export function getRecommendations(params: {
+  resume_id: string;
+  page?: number;
+  page_size?: number;
+  min_score?: number;
+}): Promise<PaginatedJobMatches> {
+  const query = toQuery(params as Record<string, string | number | undefined | null>);
+  return authed<PaginatedJobMatches>(`/matching/recommendations${query}`);
 }

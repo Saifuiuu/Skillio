@@ -6,7 +6,9 @@ import { inputClass } from "@/components/AuthCard";
 import PublicShell from "@/components/PublicShell";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Sparkles } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
+import { useMatchResume } from "@/components/matching/useMatchResume";
 import {
   formatPostedDate,
   formatSalary,
@@ -27,6 +29,8 @@ import {
 const PAGE_SIZE = 10;
 
 export default function JobsPage() {
+  const { user } = useAuth();
+  const { hasParsedCV } = useMatchResume();
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [location, setLocation] = useState("");
@@ -121,6 +125,21 @@ export default function JobsPage() {
             Dashboard
           </LinkButton>
         </div>
+
+        {user?.role === "candidate" && hasParsedCV && (
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-2xl border border-brand/20 bg-brand/5 px-4 py-2.5 text-xs sm:text-sm">
+            <div className="flex items-center gap-2 text-foreground font-medium">
+              <Sparkles className="size-4 text-brand shrink-0" aria-hidden />
+              <span>Looking for roles tailored to your background?</span>
+            </div>
+            <Link
+              href="/candidate/recommendations"
+              className="font-medium text-brand hover:underline underline-offset-2 shrink-0"
+            >
+              See jobs matched to your CV →
+            </Link>
+          </div>
+        )}
 
         <div className="mt-6 grid gap-3 rounded-3xl border border-border bg-card p-4 md:grid-cols-2 lg:grid-cols-3">
           <input
