@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DashboardShell, { DashboardSkeleton } from "@/components/DashboardShell";
 import {
   CardHeader,
@@ -65,6 +65,19 @@ export default function DashboardPage() {
   const [applicationsTotal, setApplicationsTotal] = useState(0);
   const [activeApplicationsCount, setActiveApplicationsCount] = useState(0);
   const [employerTotalApplicants, setEmployerTotalApplicants] = useState<number | null>(null);
+
+  const loggedInHandledRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("loggedIn")) return;
+    if (loggedInHandledRef.current) return;
+    loggedInHandledRef.current = true;
+
+    toast.success("Signed in successfully");
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [toast]);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
