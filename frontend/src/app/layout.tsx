@@ -55,14 +55,14 @@ export default function RootLayout({
       <body
         className={`${inter.className} min-h-screen bg-background text-foreground antialiased font-sans`}
       >
-        <AuthProvider>
-          <ThemeProvider>
-            <ToastProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <ThemeProvider>
               <RouteProgressBar />
               <AppShell>{children}</AppShell>
-            </ToastProvider>
-          </ThemeProvider>
-        </AuthProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

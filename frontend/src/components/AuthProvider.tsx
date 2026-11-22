@@ -5,10 +5,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { fetchMe, logout as apiLogout, type User } from "@/lib/api";
+import { fetchMe, logout as apiLogout, ApiError, type User } from "@/lib/api";
+import { useToast } from "@/components/ToastProvider";
 
 type AuthContextValue = {
   user: User | null;
@@ -23,6 +25,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const isLoggingOutRef = useRef(false);
 
   const refreshUser = useCallback(async (): Promise<User | null> => {
     try {
@@ -47,16 +51,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const logout = useCallback(async () => {
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
+
     try {
       await apiLogout();
-    } catch {
-      /* ignore */
-    } finally {
       if (typeof window !== "undefined") {
         window.location.replace("/login?loggedOut=1");
       }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        if (typeof window !== "undefined") {
+          window.location.replace("/login?loggedOut=1");
+        }
+        return;
+      }
+      toast.error("Could not log out. Check your connection and try again.");
+    } finally {
+      isLoggingOutRef.current = false;
     }
-  }, []);
+  }, [toast]);
 
   return (
     <AuthContext.Provider
