@@ -71,7 +71,7 @@ export default function SelectRolePage() {
     try {
       await completeGoogleSignup(role, fullName.trim().replace(/\s+/g, " "));
       await refreshUser();
-      router.replace("/dashboard");
+      router.replace("/dashboard?loggedIn=1");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 400 || err.status === 401) {

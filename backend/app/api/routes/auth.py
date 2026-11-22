@@ -489,7 +489,7 @@ def google_callback(
     db.commit()
     db.refresh(user)
 
-    response = RedirectResponse(url=f"{frontend}/dashboard", status_code=302)
+    response = RedirectResponse(url=f"{frontend}/dashboard?loggedIn=1", status_code=302)
     _issue_session(response, user)
     response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
     return response
