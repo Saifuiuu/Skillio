@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import AuthCard, { buttonClass, inputClass } from "@/components/AuthCard";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 import PasswordInput from "@/components/PasswordInput";
@@ -39,12 +39,19 @@ function LoginForm() {
     return key ? GOOGLE_ERRORS[key] ?? "Google sign-in failed." : null;
   }, [searchParams]);
 
+  const loggedOutHandledRef = useRef(false);
+
   // Strip ?loggedOut=1 without touching form state (form already mounted empty).
   useEffect(() => {
     if (!loggedOut) return;
+    if (loggedOutHandledRef.current) return;
+    loggedOutHandledRef.current = true;
+
     toast.info("Logged out");
-    router.replace("/login", { scroll: false });
-  }, [loggedOut, router, toast]);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", "/login");
+    }
+  }, [loggedOut, toast]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
